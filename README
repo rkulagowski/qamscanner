@@ -1,0 +1,7 @@
+This program scans for QAM channels using a HDHomerun-Cable Card to generate
+a channels.conf formatted file.  It can then be imported into various
+programs.
+
+The end result is that users with a cable card can create a file that
+includes the call sign of the station on a particular QAM frequency, making
+it easier to share that information with users that don't have a cable card.
