@@ -10,6 +10,11 @@ Requirements:
 You'll need to install XMLTV and run tv_grab_na_dd --configure first.  This
 will pull down a channel map for your account from Schedules Direct.
 
+You need to install libfile-homedir-perl in order to run the script:
+$ sudo apt-get install libfile-homedir-perl
+
+if you're on Ubuntu.
+
 For best results, you'll need at least one Cable Card HDHR and one non-CC
 HDHR.  The scanner will abort if it doesn't find a CC HDHR, because that's
 the whole point.

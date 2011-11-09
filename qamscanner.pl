@@ -1,5 +1,5 @@
 #!/usr/bin/perl -w
-# Robert Kulagowski, 2011-11-08
+# Robert Kulagowski, 2011-11-09
 # qamscanner.pl
 
 # Scans through channels one at a time and obtains QAM and program
@@ -17,9 +17,8 @@
 # The program assumes that it will have exclusive access to the HDHR's, so
 # don't run this while you're actually recording anything.
 
-# Run this script from within the .xmltv directory.
-
 use strict;
+use File::HomeDir;
 
 my (@deviceid, @deviceip, @device_hwtype, @qam, @program, @hdhr_callsign);
 my (@lineupinformation, @SD_callsign);
@@ -38,7 +37,7 @@ my $debugenabled=0;
 my $create_mpg=1;
 
 # How long should we capture data for?
-my $mpg_duration_seconds=15;
+my $mpg_duration_seconds=10;
 
 # Possibly parse wget http://ip.of.hdhr.cc/lineup.xml to determine the
 # highest GuideNumber. For now, specify the start and end channels on the
@@ -57,10 +56,11 @@ print "\nScanning through tv_grab_na_dd.conf file for lineup id and channel map.
 
 for (my $j=0; $j <=2000; $j++) { $SD_callsign[$j] = "***"; }
 
-if (open LINEUP, "tv_grab_na_dd.conf" ) {
+if (open LINEUP, File::HomeDir->my_home . "/.xmltv/tv_grab_na_dd.conf" ) {
   my $line;
 
-# This next part is a throw-away for now.  We don't do anything with the first three variables.
+# This next part is a line eater for now.  We don't do anything with the
+# first three fields in the .conf file.
   $line = <LINEUP>;
   $line =~ /username:\s+(\S+)/;
   my $username = $1;  
@@ -92,8 +92,6 @@ else {
   print "Fatal error: couldn't open tv_grab_na_dd.conf file.  Is it in the local directory?\n";
   exit;
 }
-
-close LINEUP;
 
 if ($debugenabled) { print "lineup id is $lineupid\n"; }
 
@@ -229,8 +227,11 @@ if ($debugenabled) { print "About to start timeout\n"; }
     }
   }
 }
-# Kill any remaining strays.
-`killall hdhomerun_config`;
+
+# Kill any remaining strays.  Of course, if we didn't create MPGs, then
+# there won't be any to kill.
+if ($create_mpg) { `killall hdhomerun_config`; }
+
 close (MYFILE);
 
 print "\nDone.\n";
