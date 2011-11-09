@@ -34,6 +34,7 @@ my $debugenabled=0;
 
 # $create_mpg is used to create .mpg files using a non-cable card HDHR
 # so that the user can check that they're not getting garbage.
+# If you don't have a non-cable card HDHR, then set this to 0.
 my $create_mpg=1;
 
 # How long should we capture data for?
