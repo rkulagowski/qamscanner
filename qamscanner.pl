@@ -21,7 +21,7 @@ use strict;
 use File::HomeDir;
 
 my (@deviceid, @deviceip, @device_hwtype, @qam, @program, @hdhr_callsign);
-my (@lineupinformation, @SD_callsign);
+my (@lineupinformation, @SD_callsign, @xmlid);
 my $i=0;
 my $hdhrcc_index=-1;
 my $hdhrqam_index=0;
@@ -49,12 +49,14 @@ my $end_channel = $ARGV[1] || "300";
 print "\nScanning through tv_grab_na_dd.conf file for lineup id and channel map.\n";
 
 # If you have more than 2000 channels, this isn't the program for you!  We
-# want the array to have a known value in each element.  If the user has
+# want the arrays to have a known value in each element.  If the user has
 # de-selected a particular channel, then we'll have *** as the call sign for
 # that channel number, and that's ok, because we'll replace it later with
 # whatever the provider is using as the call sign.
-
-for (my $j=0; $j <=2000; $j++) { $SD_callsign[$j] = "***"; }
+for (my $j=0; $j <=2000; $j++) { 
+  $SD_callsign[$j] = "***"; 
+  $xmlid[$j] = "0"; 
+}
 
 if (open LINEUP, File::HomeDir->my_home . "/.xmltv/tv_grab_na_dd.conf" ) {
   my $line;
@@ -89,11 +91,34 @@ if ($debugenabled) { print "username is $username password is $password " .
   } #end of the while loop
 } #end of the Open
 else {
-  print "Fatal error: couldn't open tv_grab_na_dd.conf file.  Is it in the local directory?\n";
+  print "Fatal error: couldn't open tv_grab_na_dd.conf file.  Have you run \"tv_grab_na_dd --configure\" first?\n";
   exit;
 }
 
+close LINEUP;
+
 if ($debugenabled) { print "lineup id is $lineupid\n"; }
+
+# Pull in the station mapping.  We do this part to get the XMLIDs.
+print "\nGetting one day of data from Schedules Direct to determine station mapping.\n";
+`tv_grab_na_dd --days 1 --dd-data lineup.xml --download-only`;
+
+print "\nScanning through downloaded xml file for xmlid's.\n";
+
+if (open LINEUP, "lineup.xml" ) {
+  while (<LINEUP>) {
+    my $line = $_;
+    if ( $line =~ /^<map station='(\d+)' channel='(\d+)'/ ) {
+      $xmlid[ $2 ] = $1;
+    }
+  }
+}
+else {
+  print "\nFatal error: Couldn't get lineup.\n";
+  exit;
+}
+
+close LINEUP;
 
 # Find which HDHRs are on the network
 my @output = `hdhomerun_config discover`;
@@ -220,10 +245,17 @@ if ($debugenabled) { print "About to start timeout\n"; }
       my $filesizetest = "channel$channel_number.$SD_callsign[$j].mpg";
       # if the filesize is 0-bytes, then don't put it into the qamdump file; for whatever reason
       # the channel isn't tunable.
-      if (-s $filesizetest) { print MYFILE "$SD_callsign[$j]:$qam[$j]:QAM_256:0:0:$program[$j]\n"; }
+
+      # Also, we're going to hijack the VID / AID field in channels.conf to
+      # store the channel number and the XMLID from Schedules Direct.  Those
+      # fields aren't used by MythTV as far as I can tell.  This will help
+      # correlate data between users if we get an odd provider-assigned call
+      # sign and need to figure out the "real" call sign.
+      
+      if (-s $filesizetest) { print MYFILE "$SD_callsign[$j]:$qam[$j]:QAM_256:$j:$xmlid[$j]:$program[$j]\n"; }
     } #end of the $create_mpg
     else { # We're not creating mpgs, but we should still dump the qamscan.
-      print MYFILE "$SD_callsign[$j]:$qam[$j]:QAM_256:0:0:$program[$j]\n";    
+      print MYFILE "$SD_callsign[$j]:$qam[$j]:QAM_256:$j:$xmlid[$j]:$program[$j]\n";    
     }
   }
 }
