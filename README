@@ -5,3 +5,13 @@ programs.
 The end result is that users with a cable card can create a file that
 includes the call sign of the station on a particular QAM frequency, making
 it easier to share that information with users that don't have a cable card.
+
+Requirements:
+You'll need to install XMLTV and run tv_grab_na_dd --configure first.  This
+will pull down a channel map for your account.
+
+For best results, you'll need at least one Cable Card HDHR and one non-CC
+HDHR.  The scanner will abort if it doesn't find a CC HDHR, because that's
+the whole point.
+
+If you only have a CC HDHR, then set $create_mpg to 0.
