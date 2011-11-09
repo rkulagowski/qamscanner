@@ -24,7 +24,7 @@ use strict;
 my (@deviceid, @deviceip, @device_hwtype, @qam, @program, @hdhr_callsign);
 my (@lineupinformation, @SD_callsign);
 my $i=0;
-my $hdhrcc_index=0;
+my $hdhrcc_index=-1;
 my $hdhrqam_index=0;
 my $channel_number=0;
 my $lineupid=0;
@@ -57,23 +57,39 @@ print "\nScanning through tv_grab_na_dd.conf file for lineup id and channel map.
 for (my $j=0; $j <=2000; $j++) { $SD_callsign[$j] = "***"; }
 
 if (open LINEUP, "tv_grab_na_dd.conf" ) {
+  my $line;
+
+# This next part is a throw-away for now.  We don't do anything with the first three variables.
+  $line = <LINEUP>;
+  $line =~ /username:\s+(\S+)/;
+  my $username = $1;  
+
+  $line = <LINEUP>;
+  $line =~ /password:\s+(\S+)/;
+  my $password = $1;  
+
+  $line = <LINEUP>;
+  $line =~ /timeoffset:\s+(\S+)/;
+  my $timeoffset = $1;  
+
+  $line = <LINEUP>;
+  $line =~ /lineup:\s+(\S+)/;
+  $lineupid = $1;  
+
+if ($debugenabled) { print "username is $username password is $password " .
+    "timeoffset is $timeoffset lineupid is $lineupid\n"; }
+
   while (<LINEUP>) {
-    chomp(my $line = $_);
+    chomp($line = $_);
 
-    if (index ($line, "lineup") > -1) {
-      $lineupid = substr $line, 8;
-      ($lineupid =~ s/ //g);    
-    }
+    $line =~ /^channel:\s*(\d+)\s+(\w+)/;
+    $SD_callsign[$1] = $2;
 
-    if (index ($line, "channel") > -1) {
-      (my $k, my $l) = (split(/ /,$line))[1,2];
-      $SD_callsign[$k] = $l;
-    }
   } #end of the while loop
 } #end of the Open
 else {
   print "Fatal error: couldn't open tv_grab_na_dd.conf file.  Is it in the local directory?\n";
-  die;
+  exit;
 }
 
 close LINEUP;
@@ -109,6 +125,13 @@ if ($debugenabled) {  print "raw data from discover: $line\n"; } #prints the raw
 if ($debugenabled) { 
   print "hdhrcc_index is $hdhrcc_index\nhdhrqam_index is$hdhrqam_index\n"; 
 }
+
+if ($hdhrcc_index == -1) {
+  print "Fatal error:  did not find a HD Homerun with a cable card.\n";
+  exit;
+}
+
+print "\nScanning channels $start_channel to $end_channel.\n";
 
 for ($i=$start_channel; $i <= $end_channel; $i++) {
     print "Getting QAM data for channel $i\n";
