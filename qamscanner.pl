@@ -282,3 +282,5 @@ if ($create_mpg) { `killall hdhomerun_config`; }
 close (MYFILE);
 
 print "\nDone.\n";
+
+print "Please send the .conf file to qam-info@schedulesdirect.org\n";
