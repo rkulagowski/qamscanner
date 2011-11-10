@@ -1,5 +1,5 @@
 #!/usr/bin/perl -w
-# Robert Kulagowski, 2011-11-09
+# Robert Kulagowski, 2011-11-10
 # qamscanner.pl
 
 # Scans through channels one at a time and obtains QAM and program
@@ -26,6 +26,8 @@ my $i=0;
 my $hdhrcc_index=-1;
 my $hdhrqam_index=0;
 my $channel_number=0;
+my $start_channel;
+my $end_channel;
 my $lineupid=0;
 
 # Set $debugenabled to 0 to reduce output.
@@ -39,12 +41,25 @@ my $create_mpg=1;
 # How long should we capture data for?
 my $mpg_duration_seconds=10;
 
-# Possibly parse wget http://ip.of.hdhr.cc/lineup.xml to determine the
-# highest GuideNumber. For now, specify the start and end channels on the
-# command line, or accept the default.  We're going to check every channel
-# just in case.
-my $start_channel = $ARGV[0] || "2";
-my $end_channel = $ARGV[1] || "300";
+if ($#ARGV eq -1) {
+  print "No start channel and end channel supplied, using default.\n";
+  $start_channel = 2;
+  $end_channel = 300;
+}
+else {
+  $start_channel = $ARGV[0];
+  $end_channel = $ARGV[1];
+
+  if (($start_channel < 1) || ($end_channel < $start_channel) 
+    || ($start_channel > $end_channel) || ($end_channel > 9999)) {
+
+    print 
+    "Invalid channel combination. Start channel must be 1 or greater\n" .
+    "and less than end channel.  End channel must be greater than start\n" .
+    "channel and less than 9999.\n";
+    exit;
+  }
+}
 
 print "\nScanning through tv_grab_na_dd.conf file for lineup id and channel map.\n";
 
