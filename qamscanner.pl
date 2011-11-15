@@ -1,5 +1,5 @@
 #!/usr/bin/perl -w
-# Robert Kulagowski, 2011-11-10
+# Robert Kulagowski, 2011-11-15
 # qamscanner.pl
 
 # Scans through channels one at a time and obtains QAM and program
@@ -29,6 +29,9 @@ my $channel_number=0;
 my $start_channel;
 my $end_channel;
 my $lineupid=0;
+my $username;
+my $password;
+my $timeoffset;
 
 # Set $debugenabled to 0 to reduce output.
 my $debugenabled=0;
@@ -76,33 +79,28 @@ for (my $j=0; $j <=2000; $j++) {
 if (open LINEUP, File::HomeDir->my_home . "/.xmltv/tv_grab_na_dd.conf" ) {
   my $line;
 
-# This next part is a line eater for now.  We don't do anything with the
-# first three fields in the .conf file.
-  $line = <LINEUP>;
-  $line =~ /username:\s+(\S+)/;
-  my $username = $1;  
-
-  $line = <LINEUP>;
-  $line =~ /password:\s+(\S+)/;
-  my $password = $1;  
-
-  $line = <LINEUP>;
-  $line =~ /timeoffset:\s+(\S+)/;
-  my $timeoffset = $1;  
-
-  $line = <LINEUP>;
-  $line =~ /lineup:\s+(\S+)/;
-  $lineupid = $1;  
-
-if ($debugenabled) { print "username is $username password is $password " .
-    "timeoffset is $timeoffset lineupid is $lineupid\n"; }
-
   while (<LINEUP>) {
     chomp($line = $_);
 
-    $line =~ /^channel:\s*(\d+)\s+(\w+)/;
-    $SD_callsign[$1] = $2;
+    if ($line =~ /username:\s+(\S+)/) {
+      $username = $1;
+    }
 
+    if ($line =~ /password:\s+(\S+)/) {
+      $password = $1;
+    }
+
+    if ($line =~ /timeoffset:\s+(\S+)/) {
+      $timeoffset = $1;
+    }
+    
+    if ($line =~ /lineup:\s+(\S+)/) {
+      $lineupid = $1;  
+    }
+
+    if ($line =~ /^channel:\s*(\d+)\s+(\w+)/) {
+      $SD_callsign[$1] = $2;
+    }
   } #end of the while loop
 } #end of the Open
 else {
@@ -112,7 +110,8 @@ else {
 
 close LINEUP;
 
-if ($debugenabled) { print "lineup id is $lineupid\n"; }
+if ($debugenabled) { print "username is $username\npassword is $password\n" .
+    "timeoffset is $timeoffset\nlineupid is $lineupid\n"; }
 
 # Pull in the station mapping.  We do this part to get the XMLIDs.
 print "\nGetting one day of data from Schedules Direct to determine station mapping.\n";
@@ -283,4 +282,4 @@ close (MYFILE);
 
 print "\nDone.\n";
 
-print "Please send the .conf file to qam-info@schedulesdirect.org\n";
+print "Please send the .conf file to qam-info\@schedulesdirect.org\n";
