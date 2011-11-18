@@ -207,6 +207,9 @@ if ($debugenabled) {  print "channel is $i vcgvs is:\n$vchannel_get_vstatus\n"; 
         # trailing whitespace.
         $hdhr_callsign[$i] =~ s/\s+$//;
 
+        # Sometimes the provider doesn't supply a callsign.
+        if (!$hdhr_callsign[$i]) { $hdhr_callsign[$i] = "***"; }
+
 if ($debugenabled) {  print "channel name is $hdhr_callsign[$i]\n"; }
 
         chomp($qam[$i] = `hdhomerun_config $deviceid[$hdhrcc_index] get /tuner2/channel`);
@@ -215,7 +218,6 @@ if ($debugenabled) {  print "channel name is $hdhr_callsign[$i]\n"; }
       } # done getting QAM information for a valid channel
     } # end of vchannel wasn't an error
 } #end of main for loop.  We've scanned from $startchannel to $endchannel
-
 
 # Dump the information gathered into an external file.
 open MYFILE, ">", "$lineupid.qam.conf";
@@ -226,9 +228,15 @@ if ($create_mpg) {
 
 for (my $j = $start_channel; $j <= $end_channel; $j++) {
   if ($qam[$j]) {
-    if ($SD_callsign[$j] eq "***" ) {
-      print "\n\nDid not get a call sign from Schedules Direct, using provider-assigned call sign.";
-      $SD_callsign[$j] = $hdhr_callsign[$j];    
+    if ($SD_callsign[$j] eq "***") {
+      print "\n\nDid not get a call sign from Schedules Direct";
+      if ($hdhr_callsign[$j] ne "***") {
+        print ", using provider-assigned call sign.";
+      }
+      else {
+        print " and provider did not supply call sign either, using ***";
+      }
+      $SD_callsign[$j] = $hdhr_callsign[$j];
     }
     if ($create_mpg) {
       print "\nCreating $mpg_duration_seconds second file for channel $j callsign $SD_callsign[$j]\n";
