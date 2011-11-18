@@ -1,5 +1,5 @@
 #!/usr/bin/perl -w
-# Robert Kulagowski, 2011-11-15
+# Robert Kulagowski, 2011-11-18
 # qamscanner.pl
 
 # Scans through channels one at a time and obtains QAM and program
@@ -161,7 +161,7 @@ if ($debugenabled) {  print "raw data from discover: $line\n"; } #prints the raw
 }
 
 if ($debugenabled) { 
-  print "hdhrcc_index is $hdhrcc_index\nhdhrqam_index is$hdhrqam_index\n"; 
+  print "hdhrcc_index is $hdhrcc_index\nhdhrqam_index is $hdhrqam_index\n"; 
 }
 
 if ($hdhrcc_index == -1) {
@@ -190,18 +190,21 @@ for ($i=$start_channel; $i <= $end_channel; $i++) {
 
 if ($debugenabled) {  print "channel is $i vcgvs is:\n$vchannel_get_vstatus\n"; }
 
-      if ($vchannel_get_vstatus =~ /auth=unspecified/) { 
-      #auth=unspecified seems to mean that it's clear
+      if (index($vchannel_get_vstatus,"auth=unspecified") ||
+      index($vchannel_get_vstatus,"auth=unknown")) {
+
+      # auth=unspecified seems to mean that it's clear.  So does unknown
+      # apparently.
 
         my $k = (split(/=/,$vchannel_get_vstatus))[2];
         $hdhr_callsign[$i] = substr $k,0,length($k)-5;
 
-        # Replace any slash characters in the name of the channel with a hyphen so
-        # that we get a valid filename later.
+        # Replace any slash characters in the name of the channel with a
+        # hyphen so that we get a valid filename later.
         $hdhr_callsign[$i] =~ s/\//-/g;
 
-        # Remove trailing white space.  Some channels seem to have a lot of trailing
-        # whitespace.
+        # Remove trailing white space.  Some channels seem to have a lot of
+        # trailing whitespace.
         $hdhr_callsign[$i] =~ s/\s+$//;
 
 if ($debugenabled) {  print "channel name is $hdhr_callsign[$i]\n"; }
