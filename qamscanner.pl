@@ -1,5 +1,5 @@
 #!/usr/bin/perl -w
-# Robert Kulagowski, 2011-11-18
+# Robert Kulagowski, 2011-11-29
 # qamscanner.pl
 
 # Scans through channels one at a time and obtains QAM and program
@@ -24,7 +24,7 @@ my (@deviceid, @deviceip, @device_hwtype, @qam, @program, @hdhr_callsign);
 my (@lineupinformation, @SD_callsign, @xmlid);
 my $i=0;
 my $hdhrcc_index=-1;
-my $hdhrqam_index=0;
+my $hdhrqam_index=-1;
 my $channel_number=0;
 my $start_channel;
 my $end_channel;
@@ -154,7 +154,16 @@ if ($debugenabled) {  print "raw data from discover: $line\n"; } #prints the raw
     }  
 
     if ($device_hwtype[$i] eq "hdhomerun_atsc") {
-      $hdhrqam_index=$i;  #Keep track of which device is a standard HDHR
+      print "Is this device connected to an Antenna, or is it connected to your Cable system? (A/C/Quit) ";
+      my $response;
+      chomp ($response = <STDIN>);
+      $response = uc($response);
+      if ($response eq "C") { 
+        $hdhrqam_index=$i;  #Keep track of which device is connected to coax - can't do a QAM scan on Antenna systems.
+      }
+      if ($response eq "Q") {
+        exit;
+      }
     }  
 
     $i++;
@@ -218,6 +227,11 @@ if ($debugenabled) {  print "channel name is $hdhr_callsign[$i]\n"; }
       } # done getting QAM information for a valid channel
     } # end of vchannel wasn't an error
 } #end of main for loop.  We've scanned from $startchannel to $endchannel
+
+# If we don't have a QAM device, then don't create the .mpg files.
+if ($hdhrqam_index == -1) {
+  $create_mpg = 0;
+}
 
 # Dump the information gathered into an external file.
 open MYFILE, ">", "$lineupid.qam.conf";
