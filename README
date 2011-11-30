@@ -18,3 +18,17 @@ if you're on Ubuntu.
 For best results, you'll need at least one Cable Card HDHR and one non-CC
 HDHR.  The scanner will abort if it doesn't find a CC HDHR, because that's
 the whole point.
+
+qamscanner.pl accepts the following command line arguments.
+No arguments will run a scan from channel 2 through 300.
+
+--debug      Enable debug mode.  Prints additional information
+             to assist with any issues.
+--create-mpg If you have an ATSC HDHR on your network, it will
+             be used to create sample .mpg files to verify channel
+             information. Default is false.
+--duration   If you're creating .mpg files, how long should they
+             be (in seconds). Default is 10 seconds.
+--start      Start channel.  Default is channel 2.
+--end        End channel.  Default is channel 300
+--help       This screen.
