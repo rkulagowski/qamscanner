@@ -3,18 +3,20 @@
 # qamscanner.pl
 
 # Scans through channels one at a time and obtains QAM and program
-# information.  Assumes that there is at least one HDHomerun-Cable Card and
-# one non-cable card HDHR.  The non-CC HDHR is used to tune the QAM freq and
-# program that we received from the CC HDHR to create a .mpg file in the
-# current directory.  You can use vlc {filename}.mpg to confirm that the QAM
-# scan was accurate.
+# information.  You must have at least one HDHomerun-Cable Card available on
+# the network.
 
-# Ensure that hdhomerun_config is somewhere in your path.  Make sure that
-# you've run tv_grab_na_dd --configure at least once manually before you use
-# this script.  Select the "digital" lineup when configuring tv_grab_na_dd
-# to get maximum channel coverage.
+# If you also have at least one non-cable card HDHR connected to your coax,
+# it can be used to tune the QAM frequency and program that we received from
+# the CC HDHR to create a .mpg file in the current directory.  You can use
+# vlc {filename}.mpg to confirm that the QAM scan was accurate.
 
-# The program assumes that it will have exclusive access to the HDHR's, so
+# Ensure that hdhomerun_config is somewhere in your path.  You must run
+# tv_grab_na_dd --configure at least once manually before you use this
+# script.  Select the "digital" lineup when configuring tv_grab_na_dd to get
+# maximum channel coverage.
+
+# The program assumes that it will have exclusive access to any HDHR's, so
 # don't run this while you're actually recording anything.
 
 use strict;
