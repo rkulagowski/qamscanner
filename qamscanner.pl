@@ -64,7 +64,8 @@ if ($help) {
         "\n--duration   If you're creating .mpg files, how long should they " .
         "\n             be (in seconds). Default is 10 seconds." .
         "\n--start      Start channel.  Default is channel 2." .
-        "\n--end        End channel.  Default is channel 300\n";
+        "\n--end        End channel.  Default is channel 300." .
+        "\n--help       This screen.\n";
   exit;
 }
 
