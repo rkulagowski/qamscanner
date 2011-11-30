@@ -199,11 +199,9 @@ for ($i=$start_channel; $i <= $end_channel; $i++) {
 
 if ($debugenabled) {  print "channel is $i vcgvs is:\n$vchannel_get_vstatus\n"; }
 
-      if (index($vchannel_get_vstatus,"auth=unspecified") ||
-      index($vchannel_get_vstatus,"auth=unknown")) {
+      if (index($vchannel_get_vstatus,"auth=unspecified")) {
 
-      # auth=unspecified seems to mean that it's clear.  So does unknown
-      # apparently.
+      # auth=unspecified seems to mean that it's clear.
 
         my $k = (split(/=/,$vchannel_get_vstatus))[2];
         $hdhr_callsign[$i] = substr $k,0,length($k)-5;
