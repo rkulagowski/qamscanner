@@ -1,5 +1,5 @@
 #!/usr/bin/perl -w
-# Robert Kulagowski, 2011-11-29
+# Robert Kulagowski, 2011-11-30
 # qamscanner.pl
 
 # Scans through channels one at a time and obtains QAM and program
@@ -19,6 +19,7 @@
 
 use strict;
 use File::HomeDir;
+use Getopt::Long;
 
 my (@deviceid, @deviceip, @device_hwtype, @qam, @program, @hdhr_callsign);
 my (@lineupinformation, @SD_callsign, @xmlid);
@@ -26,12 +27,13 @@ my $i=0;
 my $hdhrcc_index=-1;
 my $hdhrqam_index=-1;
 my $channel_number=0;
-my $start_channel;
-my $end_channel;
+my $start_channel=2;
+my $end_channel=300;
 my $lineupid=0;
 my $username;
 my $password;
 my $timeoffset;
+my $help;
 
 # Set $debugenabled to 0 to reduce output.
 my $debugenabled=0;
@@ -39,19 +41,32 @@ my $debugenabled=0;
 # $create_mpg is used to create .mpg files using a non-cable card HDHR
 # so that the user can check that they're not getting garbage.
 # If you don't have a non-cable card HDHR, then set this to 0.
-my $create_mpg=1;
+my $create_mpg=0;
 
 # How long should we capture data for?
 my $mpg_duration_seconds=10;
 
-if ($#ARGV eq -1) {
-  print "No start channel and end channel supplied, using default.\n";
-  $start_channel = 2;
-  $end_channel = 300;
+GetOptions ('debug' => \$debugenabled, 
+            'create-mpg' => \$create_mpg,
+            'duration=i' => \$mpg_duration_seconds,
+            'start=i' => \$start_channel,
+            'end=i' => \$end_channel,
+            'help|?' => \$help);
+
+if ($help) {
+  print "qamscanner.pl accepts the following command line arguments." .
+        "\nNo arguments will run a scan from channel 2 through 300.\n" .
+        "\n--debug      Enable debug mode.  Prints additional information " .
+        "\n             to assist with any issues." .
+        "\n--create-mpg If you have an ATSC HDHR on your network, it will " .
+        "\n             be used to create sample .mpg files to verify channel " .
+        "\n             information. Default is false." .
+        "\n--duration   If you're creating .mpg files, how long should they " .
+        "\n             be (in seconds). Default is 10 seconds." .
+        "\n--start      Start channel.  Default is channel 2." .
+        "\n--end        End channel.  Default is channel 300\n";
+  exit;
 }
-else {
-  $start_channel = $ARGV[0];
-  $end_channel = $ARGV[1];
 
   if (($start_channel < 1) || ($end_channel < $start_channel) 
     || ($start_channel > $end_channel) || ($end_channel > 9999)) {
@@ -62,7 +77,6 @@ else {
     "channel and less than 9999.\n";
     exit;
   }
-}
 
 print "\nScanning through tv_grab_na_dd.conf file for lineup id and channel map.\n";
 
@@ -153,16 +167,13 @@ if ($debugenabled) {  print "raw data from discover: $line\n"; } #prints the raw
       $hdhrcc_index=$i;  #Keep track of which device is a HDHR-CC
     }  
 
-    if ($device_hwtype[$i] eq "hdhomerun_atsc") {
-      print "Is this device connected to an Antenna, or is it connected to your Cable system? (A/C/Quit) ";
+    if ($device_hwtype[$i] eq "hdhomerun_atsc" && $create_mpg) {
+      print "Is this device connected to an Antenna, or is it connected to your Cable system? (A/C/Skip) ";
       my $response;
       chomp ($response = <STDIN>);
       $response = uc($response);
       if ($response eq "C") { 
         $hdhrqam_index=$i;  #Keep track of which device is connected to coax - can't do a QAM scan on Antenna systems.
-      }
-      if ($response eq "Q") {
-        exit;
       }
     }  
 
@@ -199,8 +210,7 @@ for ($i=$start_channel; $i <= $end_channel; $i++) {
 
 if ($debugenabled) {  print "channel is $i vcgvs is:\n$vchannel_get_vstatus\n"; }
 
-      if (index($vchannel_get_vstatus,"auth=unspecified")) {
-
+      if ($vchannel_get_vstatus =~ /auth=unspecified/) {
       # auth=unspecified seems to mean that it's clear.
 
         my $k = (split(/=/,$vchannel_get_vstatus))[2];
