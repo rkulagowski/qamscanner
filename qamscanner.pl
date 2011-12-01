@@ -1,5 +1,6 @@
 #!/usr/bin/perl -w
-# Robert Kulagowski, 2011-11-30 v1.00
+# Robert Kulagowski
+# qam-info@schedulesdirect.org
 # qamscanner.pl
 
 # Scans through channels one at a time and obtains QAM and program
@@ -22,6 +23,9 @@
 use strict;
 use File::HomeDir;
 use Getopt::Long;
+
+my $version = 1.01;
+my $date="2011-12-01";
 
 my (@deviceid, @deviceip, @device_hwtype, @qam, @program, @hdhr_callsign);
 my (@lineupinformation, @SD_callsign, @xmlid);
@@ -56,7 +60,8 @@ GetOptions ('debug' => \$debugenabled,
             'help|?' => \$help);
 
 if ($help) {
-  print "qamscanner.pl accepts the following command line arguments." .
+  print "\nqamscanner.pl v$version $date\n" .
+        "This script supports the following command line arguments." .
         "\nNo arguments will run a scan from channel 2 through 300.\n" .
         "\n--debug      Enable debug mode.  Prints additional information " .
         "\n             to assist with any issues." .
@@ -67,7 +72,10 @@ if ($help) {
         "\n             be (in seconds). Default is 10 seconds." .
         "\n--start      Start channel.  Default is channel 2." .
         "\n--end        End channel.  Default is channel 300." .
-        "\n--help       This screen.\n";
+        "\n--help       This screen.\n" .
+        "\nBug reports to qam-info\@schedulesdirect.org  Include the .conf " .
+        "\nfile and the complete output when the script is run with " .
+        "\n--debug\n\n";
   exit;
 }
 
