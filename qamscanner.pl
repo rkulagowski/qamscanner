@@ -1,5 +1,5 @@
 #!/usr/bin/perl -w
-# Robert Kulagowski, 2011-11-30
+# Robert Kulagowski, 2011-11-30 v1.00
 # qamscanner.pl
 
 # Scans through channels one at a time and obtains QAM and program
