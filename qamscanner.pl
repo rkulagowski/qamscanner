@@ -24,8 +24,8 @@ use strict;
 use File::HomeDir;
 use Getopt::Long;
 
-my $version = 1.01;
-my $date="2011-12-01";
+my $version = 1.02;
+my $date="2011-12-03";
 
 my (@deviceid, @deviceip, @device_hwtype, @qam, @program, @hdhr_callsign);
 my (@lineupinformation, @SD_callsign, @xmlid);
@@ -252,8 +252,12 @@ if ($hdhrqam_index == -1) {
   $create_mpg = 0;
 }
 
-# Dump the information gathered into an external file.
+# Dump the information gathered into an external file.  Normalize the
+# lineupid so that we get rid of anything that's not alphanumeric
+
+$lineupid =~ s/\W//;
 open MYFILE, ">", "$lineupid.qam.conf";
+print MYFILE "\n# qamscanner.pl v$version $date\n";
 
 if ($create_mpg) {
   `hdhomerun_config $deviceid[$hdhrqam_index] set /tuner0/channelmap us-cable`;
