@@ -24,7 +24,7 @@ use strict;
 use File::HomeDir;
 use Getopt::Long;
 
-my $version = 1.02;
+my $version = "1.03";
 my $date="2011-12-03";
 
 my (@deviceid, @deviceip, @device_hwtype, @qam, @program, @hdhr_callsign);
@@ -257,7 +257,7 @@ if ($hdhrqam_index == -1) {
 
 $lineupid =~ s/\W//;
 open MYFILE, ">", "$lineupid.qam.conf";
-print MYFILE "\n# qamscanner.pl v$version $date\n";
+print MYFILE "\n# qamscanner.pl v$version $date $lineupid\n";
 
 if ($create_mpg) {
   `hdhomerun_config $deviceid[$hdhrqam_index] set /tuner0/channelmap us-cable`;
@@ -330,4 +330,4 @@ close (MYFILE);
 
 print "\nDone.\n";
 
-print "Please send the .conf file to qam-info\@schedulesdirect.org\n";
+print "Please email the .conf file to qam-info\@schedulesdirect.org\n";
