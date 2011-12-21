@@ -24,8 +24,8 @@ use strict;
 use File::HomeDir;
 use Getopt::Long;
 
-my $version = "1.03";
-my $date="2011-12-03";
+my $version = "1.04";
+my $date="2011-12-21";
 
 my (@deviceid, @deviceip, @device_hwtype, @qam, @program, @hdhr_callsign);
 my (@lineupinformation, @SD_callsign, @xmlid);
@@ -96,16 +96,16 @@ print "\nScanning through tv_grab_na_dd.conf file for lineup id and channel map.
 # de-selected a particular channel, then we'll have *** as the call sign for
 # that channel number, and that's ok, because we'll replace it later with
 # whatever the provider is using as the call sign.
-for (my $j=0; $j <=2000; $j++) { 
+for my $j (0 .. 2000) { 
   $SD_callsign[$j] = "***"; 
   $xmlid[$j] = "0"; 
 }
 
-if (open LINEUP, File::HomeDir->my_home . "/.xmltv/tv_grab_na_dd.conf" ) {
-  my $line;
+open LINEUP, "<", File::HomeDir->my_home . "/.xmltv/tv_grab_na_dd.conf" or 
+  die "Fatal error: couldn't open tv_grab_na_dd.conf file.  Have you run \"tv_grab_na_dd --configure\" first?\n";
 
-  while (<LINEUP>) {
-    chomp($line = $_);
+  while (my $line = <LINEUP>) {
+    chomp($line);
 
     if ($line =~ /username:\s+(\S+)/) {
       $username = $1;
@@ -127,11 +127,6 @@ if (open LINEUP, File::HomeDir->my_home . "/.xmltv/tv_grab_na_dd.conf" ) {
       $SD_callsign[$1] = $2;
     }
   } #end of the while loop
-} #end of the Open
-else {
-  print "Fatal error: couldn't open tv_grab_na_dd.conf file.  Have you run \"tv_grab_na_dd --configure\" first?\n";
-  exit;
-}
 
 close LINEUP;
 
