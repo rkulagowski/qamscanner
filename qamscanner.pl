@@ -24,8 +24,8 @@ use strict;
 use File::HomeDir;
 use Getopt::Long;
 
-my $version = "1.04";
-my $date="2011-12-21";
+my $version = "1.05";
+my $date="2012-01-07";
 
 my (@deviceid, @deviceip, @device_hwtype, @qam, @program, @hdhr_callsign);
 my (@lineupinformation, @SD_callsign, @xmlid);
@@ -199,7 +199,7 @@ print "\nScanning channels $start_channel to $end_channel.\n";
 
 for ($i=$start_channel; $i <= $end_channel; $i++) {
     print "Getting QAM data for channel $i\n";
-    my $vchannel_set_status = `hdhomerun_config $deviceid[$hdhrcc_index] set /tuner2/vchannel $i`;
+    my $vchannel_set_status = `hdhomerun_config $deviceid[$hdhrcc_index] set /tuner0/vchannel $i`;
     chomp($vchannel_set_status);
 
 # If we get anything back, that indicates an error, so print it out.
@@ -211,7 +211,7 @@ for ($i=$start_channel; $i <= $end_channel; $i++) {
 
       sleep (1); #if you don't sleep, you don't get updated values for vstatus
 
-      my $vchannel_get_vstatus = `hdhomerun_config $deviceid[$hdhrcc_index] get /tuner2/vstatus`;
+      my $vchannel_get_vstatus = `hdhomerun_config $deviceid[$hdhrcc_index] get /tuner0/vstatus`;
       chomp($vchannel_get_vstatus);
 
 if ($debugenabled) {  print "channel is $i vcgvs is:\n$vchannel_get_vstatus\n"; }
@@ -235,9 +235,9 @@ if ($debugenabled) {  print "channel is $i vcgvs is:\n$vchannel_get_vstatus\n"; 
 
 if ($debugenabled) {  print "channel name is $hdhr_callsign[$i]\n"; }
 
-        chomp($qam[$i] = `hdhomerun_config $deviceid[$hdhrcc_index] get /tuner2/channel`);
+        chomp($qam[$i] = `hdhomerun_config $deviceid[$hdhrcc_index] get /tuner0/channel`);
         $qam[$i]=substr $qam[$i],4;  
-        chomp($program[$i] = `hdhomerun_config $deviceid[$hdhrcc_index] get /tuner2/program`);
+        chomp($program[$i] = `hdhomerun_config $deviceid[$hdhrcc_index] get /tuner0/program`);
       } # done getting QAM information for a valid channel
     } # end of vchannel wasn't an error
 } #end of main for loop.  We've scanned from $startchannel to $endchannel

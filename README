@@ -30,5 +30,5 @@ No arguments will run a scan from channel 2 through 300.
 --duration   If you're creating .mpg files, how long should they
              be (in seconds). Default is 10 seconds.
 --start      Start channel.  Default is channel 2.
---end        End channel.  Default is channel 300
+--end        End channel.  Default is channel 300.
 --help       This screen.
