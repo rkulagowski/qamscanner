@@ -24,7 +24,7 @@ use strict;
 use File::HomeDir;
 use Getopt::Long;
 
-my $version = "1.08";
+my $version = "1.09";
 my $date="2012-01-19";
 
 my (@deviceid, @deviceip, @device_hwtype, @qam, @program, @hdhr_callsign);
@@ -33,8 +33,8 @@ my $i=0;
 my $hdhrcc_index=-1;
 my $hdhrqam_index=-1;
 my $channel_number=0;
-my $start_channel=2;
-my $end_channel=300;
+my $start_channel=1;
+my $end_channel=1000;
 my $lineupid=0;
 my $username;
 my $password;
@@ -43,9 +43,18 @@ my $help;
 
 # auth=unspecified seems to mean that it's clear, but other users have
 # stated that they needed to use "unknown" to get any channels. 
-# "subscribed" is no good because it's a channel accessible via the Prime,
-# but not necessarily clear QAM.
+# "subscribed" is usually no good because it's a channel accessible via the
+# Prime, but not necessarily clear QAM.  But, at least one user that has
+# FIOS says that they need to use authtype subscribed, then check the
+# streamino information from a non-CC HDHR to confirm that the channel isn't
+# encrypted.  Furrfu!
 my $authtype = "unspecified";
+
+# Attempt to determine encryption status of channels a second way, using the
+# streaminfo information obtained from an ATSC CC.  Required if user
+# specifies "subscribed" as the auth type.  Patch and information from
+# Sebastien Astie.
+my $use_streaminfo=0;
 
 # Set $debugenabled to 0 to reduce output.
 my $debugenabled=0;
@@ -55,11 +64,13 @@ my $debugenabled=0;
 # If you don't have a non-cable card HDHR, then set this to 0.
 my $create_mpg=0;
 
+
 # How long should we capture data for?
 my $mpg_duration_seconds=10;
 
 GetOptions ('debug' => \$debugenabled,
             'authtype=s' => \$authtype,
+            'streaminfo' => \$use_streaminfo,
             'create-mpg' => \$create_mpg,
             'duration=i' => \$mpg_duration_seconds,
             'start=i' => \$start_channel,
@@ -68,19 +79,28 @@ GetOptions ('debug' => \$debugenabled,
 
 if ($help) {
   print "\nqamscanner.pl v$version $date\n" .
+        "\nUsage: qamscanner.pl [switches]" .
         "This script supports the following command line arguments." .
-        "\nNo arguments will run a scan from channel 2 through 300.\n" .
-        "\n--debug      Enable debug mode.  Prints additional information " .
-        "\n             to assist with any issues." .
-        "\n--authtype   Default is \"unspecified\". If the scan returns no" .
-        "\n             valid channels, re-run the program with \"unknown\"." .
+        "\nNo arguments will run a scan from channel 1 through 1000.\n" .
+        "\n--debug      Enable debug mode. Prints additional information " .
+        "\n             to assist in troubleshooting any issues." .
+        "\n--start      Start channel. Default is channel 1." .
+        "\n--end        End channel. Default is channel 1000." .
         "\n--create-mpg If you have an ATSC HDHR on your network, it will " .
         "\n             be used to create sample .mpg files to verify channel " .
         "\n             information. Default is false." .
-        "\n--duration   If you're creating .mpg files, how long should they " .
-        "\n             be (in seconds). Default is 10 seconds." .
-        "\n--start      Start channel.  Default is channel 2." .
-        "\n--end        End channel.  Default is channel 300." .
+        "\n--duration   If \"--create-mpg\" is used, how long a sample should be " .
+        "\n             captured (in seconds). Default is 10 seconds." .
+        "\n--authtype   {unspecified | unknown | subscribed}" .
+        "\n             Unless explicitly passed, the default is " .
+        "\n             \"unspecified\". If the scan returns no" .
+        "\n             valid channels, re-run this program with \"--authtype unknown\"." .
+        "\n             If you are on FIOS, you may need to use \"--authtype subscribed\"," .
+        "\n             which will automatically enable --streaminfo" .
+        "\n--streaminfo Some cable providers seem to create valid MPG files" .
+        "\n             even if the channel is encrypted. Try reading the" .
+        "\n             encryption status directly from the QAM table of an ATSC HDHR." .
+        "\n             Default is false." .
         "\n--help       This screen.\n" .
         "\nBug reports to qam-info\@schedulesdirect.org  Include the .conf " .
         "\nfile and the complete output when the script is run with " .
@@ -92,11 +112,64 @@ if ($help) {
     || ($start_channel > $end_channel) || ($end_channel > 9999)) {
 
     print 
-    "Invalid channel combination. Start channel must be greater than 1\n" .
-    "and less than end channel.  End channel must be greater than start\n" .
+    "Invalid channel combination. Start channel must be greater than 0\n" .
+    "and less than end channel. End channel must be greater than start\n" .
     "channel and less than 9999.\n";
     exit;
   }
+
+if ($authtype eq "subscribed") {
+  $use_streaminfo = 1;
+}
+
+# Find which HDHRs are on the network
+my @output = `hdhomerun_config discover`;
+chomp(@output); # removes newlines
+
+print "\nDiscovering HD Homeruns on the network.\n";
+
+foreach my $line(@output) {
+if ($debugenabled) {  print "raw data from discover: $line\n"; } #prints the raw information
+
+    ($deviceid[$i], $deviceip[$i]) = (split (/ /,$line))[2, 5];
+
+    chomp($device_hwtype[$i] = `hdhomerun_config $deviceid[$i] get /sys/model`);
+
+    print "device ID $deviceid[$i] has IP address $deviceip[$i] and is a $device_hwtype[$i]\n";
+
+    if ($device_hwtype[$i] eq "hdhomerun3_cablecard") {
+      $hdhrcc_index=$i;  #Keep track of which device is a HDHR-CC
+    }  
+
+    if ($device_hwtype[$i] =~ "_atsc" && ($create_mpg || $use_streaminfo)) {
+      print "Is this device connected to an Antenna, or is it connected to your Cable system? (A/C/Skip) ";
+      my $response;
+      chomp ($response = <STDIN>);
+      $response = uc($response);
+      if ($response eq "C") { 
+        $hdhrqam_index=$i;  #Keep track of which device is connected to coax - can't do a QAM scan on Antenna systems.
+      }
+    }  
+
+    $i++;
+}
+
+if ($debugenabled) { 
+  print "hdhrcc_index is $hdhrcc_index\nhdhrqam_index is $hdhrqam_index\n"; 
+}
+
+if ($hdhrcc_index == -1) {
+  print "Fatal error: did not find a HD Homerun with a cable card.\n";
+  exit;
+}
+
+if ($hdhrqam_index == -1 && $authtype eq "subscribed") {
+  print
+"\nFatal error: Using authtype \"subscribed\" without verifying resulting\n" .
+"QAM table using a non-Cable Card HDHR is not supported.\n" .
+"Did not find a non-CC HDHR connected to the coax.\n";
+exit;
+}
 
 print "\nScanning through tv_grab_na_dd.conf file for lineup id and channel map.\n";
 
@@ -163,46 +236,6 @@ else {
 
 close LINEUP;
 
-# Find which HDHRs are on the network
-my @output = `hdhomerun_config discover`;
-chomp(@output); # removes newlines
-
-print "\nDiscovering HDHRs\n";
-
-foreach my $line(@output) {
-if ($debugenabled) {  print "raw data from discover: $line\n"; } #prints the raw information
-
-    ($deviceid[$i], $deviceip[$i]) = (split (/ /,$line))[2, 5];
-
-    chomp($device_hwtype[$i] = `hdhomerun_config $deviceid[$i] get /sys/model`);
-
-    print "device ID $deviceid[$i] has IP address $deviceip[$i] and is a $device_hwtype[$i]\n";
-
-    if ($device_hwtype[$i] eq "hdhomerun3_cablecard") {
-      $hdhrcc_index=$i;  #Keep track of which device is a HDHR-CC
-    }  
-
-    if ($device_hwtype[$i] =~ "_atsc" && $create_mpg) {
-      print "Is this device connected to an Antenna, or is it connected to your Cable system? (A/C/Skip) ";
-      my $response;
-      chomp ($response = <STDIN>);
-      $response = uc($response);
-      if ($response eq "C") { 
-        $hdhrqam_index=$i;  #Keep track of which device is connected to coax - can't do a QAM scan on Antenna systems.
-      }
-    }  
-
-    $i++;
-}
-
-if ($debugenabled) { 
-  print "hdhrcc_index is $hdhrcc_index\nhdhrqam_index is $hdhrqam_index\n"; 
-}
-
-if ($hdhrcc_index == -1) {
-  print "Fatal error:  did not find a HD Homerun with a cable card.\n";
-  exit;
-}
 
 print "\nScanning channels $start_channel to $end_channel.\n";
 
@@ -212,7 +245,9 @@ for ($i=$start_channel; $i <= $end_channel; $i++) {
     chomp($vchannel_set_status);
 
 # If we get anything back, that indicates an error, so print it out.
-    if ($vchannel_set_status){ print "vcss is $vchannel_set_status\n"; }
+    if ($vchannel_set_status) { 
+      print "vcss is $vchannel_set_status\n"; 
+    }
 
     if ($vchannel_set_status !~ /ERROR/) { 
 # Didn't get a tuning error (the channel number exists in the lineup), so
@@ -250,84 +285,102 @@ if ($debugenabled) {  print "channel name is $hdhr_callsign[$i]\n"; }
     } # end of vchannel wasn't an error
 } #end of main for loop.  We've scanned from $startchannel to $endchannel
 
-# If we don't have a QAM device, then don't create the .mpg files.
+# If we don't have a QAM device, then don't create the .mpg files or check
+# the qam streaminfo for encrypted status.
+
 if ($hdhrqam_index == -1) {
   $create_mpg = 0;
+  $use_streaminfo = 0;
 }
 
 # Dump the information gathered into an external file.  Normalize the
-# lineupid so that we get rid of anything that's not alphanumeric
+# lineupid so that we get rid of anything that's not alphanumeric.
 
 $lineupid =~ s/\W//;
 open MYFILE, ">", "$lineupid.qam.conf";
-print MYFILE "\n# qamscanner.pl v$version $date $lineupid start:$start_channel end:$end_channel authtype:$authtype\n";
+print MYFILE "\n# qamscanner.pl v$version $date $lineupid start:$start_channel " .
+"end:$end_channel authtype:$authtype streaminfo:$use_streaminfo\n";
 
-if ($create_mpg) {
+if ($create_mpg || $use_streaminfo) {
   `hdhomerun_config $deviceid[$hdhrqam_index] set /tuner0/channelmap us-cable`;
 }
 
 for (my $j = $start_channel; $j <= $end_channel; $j++) {
   if ($qam[$j]) {
+    print "\nChannel $j: ";
     if ($SD_callsign[$j] eq "***") {
-      print "\n\nDid not get a call sign from Schedules Direct";
+      print "Did not get a call sign from Schedules Direct";
       if ($hdhr_callsign[$j] ne "***") {
-        print ", using provider-assigned call sign.";
+        print ", using provider-assigned call sign.\n";
       }
       else {
-        print " and provider did not supply call sign either, using ***";
+        print " and provider did not supply call sign either, using ***\n";
       }
       $SD_callsign[$j] = $hdhr_callsign[$j];
     }
-    if ($create_mpg) {
-      print "\nCreating $mpg_duration_seconds second file for channel $j callsign $SD_callsign[$j]\n";
+    if ($create_mpg || $use_streaminfo) {
       my $tunestatus = `hdhomerun_config $deviceid[$hdhrqam_index] set /tuner0/channel auto:$qam[$j]`;
       chomp($tunestatus);
-
+      my $channelisclear = 0;
       if ($tunestatus ne "ERROR: invalid channel") {
-
         `hdhomerun_config $deviceid[$hdhrqam_index] set /tuner0/program $program[$j]`;
-
-        # The files created will always have a 4-digit channel number, with
-        # leading 0's so that the files sort correctly.
-        $channel_number = sprintf "%04d",  $j;
-        
-# next routine is from http://arstechnica.com/civis/viewtopic.php?f=20&t=914012
+        if ($use_streaminfo) {
+          print " Getting encryption status for channel.";
+	  #we need to sleep so that the hdhr can tune itself	
+	  sleep(2);
+	  my @streaminfo = `hdhomerun_config $deviceid[$hdhrqam_index] get /tuner0/streaminfo`;
+	  my $len = $#streaminfo -1; #the last value in the streaminfo we do not care about (tsid).
+          for (my $idx = 0; $idx < $len; $idx++) {
+            #check if the string starts with the programid
+	    chomp($streaminfo[$idx]);
+            if(($streaminfo[$idx] =~ m/^$program[$j]:/) && ($streaminfo[$idx] !~ m/(encrypted)/ )) {
+              $channelisclear = 1;
+              last;
+            }
+	  }
+        } #end of $use_streaminfo
+        elsif ($create_mpg) {
+          print "\nCreating $mpg_duration_seconds second file for channel $j callsign $SD_callsign[$j]\n";
+          # The files created will always have a 4-digit channel number, with
+          # leading 0's so that the files sort correctly.
+          $channel_number = sprintf "%04d",  $j;
+          # next routine is from http://arstechnica.com/civis/viewtopic.php?f=20&t=914012
 if ($debugenabled) { print "About to start timeout\n"; }
-
-        eval {
-          local $SIG{ALRM} = sub { die "alarm\n" }; # NB: \n required
-          alarm $mpg_duration_seconds;
-          system ("hdhomerun_config", "$deviceid[$hdhrqam_index]", "save",
-          "/tuner0", "channel$channel_number.$SD_callsign[$j].mpg");
-          alarm 0;
+          eval {
+            local $SIG{ALRM} = sub { die "alarm\n" }; # NB: \n required
+            alarm $mpg_duration_seconds;
+            system ("hdhomerun_config", "$deviceid[$hdhrqam_index]", "save",
+            "/tuner0", "channel$channel_number.$SD_callsign[$j].mpg");
+            alarm 0;
+          };
+          my $filesizetest = "channel$channel_number.$SD_callsign[$j].mpg";
+          # if the filesize is 0-bytes, then don't put it into the qamdump file; for whatever reason
+          # the channel isn't tunable.
+	  if (-s $filesizetest) {
+            $channelisclear = 1;
+          }
+        }  #end of $create_mpg
+        
+        # Also, we're going to hijack the VID / AID field in channels.conf to
+        # store the channel number and the XMLID from Schedules Direct.  Those
+        # fields aren't used by MythTV as far as I can tell.  This will help
+        # correlate data between users if we get an odd provider-assigned call
+        # sign and need to figure out the "real" call sign.
+        if ($channelisclear) {
+          print MYFILE "$SD_callsign[$j]:$qam[$j]:QAM_256:$j:$xmlid[$j]:$program[$j]\n";
         }
-
-
-      } #end of the tunestatus routine.
-
-      `killall hdhomerun_config`;
-
-      my $filesizetest = "channel$channel_number.$SD_callsign[$j].mpg";
-      # if the filesize is 0-bytes, then don't put it into the qamdump file; for whatever reason
-      # the channel isn't tunable.
-
-      # Also, we're going to hijack the VID / AID field in channels.conf to
-      # store the channel number and the XMLID from Schedules Direct.  Those
-      # fields aren't used by MythTV as far as I can tell.  This will help
-      # correlate data between users if we get an odd provider-assigned call
-      # sign and need to figure out the "real" call sign.
-      
-      if (-s $filesizetest) { print MYFILE "$SD_callsign[$j]:$qam[$j]:QAM_256:$j:$xmlid[$j]:$program[$j]\n"; }
-    } #end of the $create_mpg
-    else { # We're not creating mpgs, but we should still dump the qamscan.
-      print MYFILE "$SD_callsign[$j]:$qam[$j]:QAM_256:$j:$xmlid[$j]:$program[$j]\n";    
+      } #end of tunestatus
+    } #end of $create_mpg || $use_streaminfo
+    else {
+     # We're not creating mpgs or using streaminfo, but we should still dump the qamscan.
+      print MYFILE "$SD_callsign[$j]:$qam[$j]:QAM_256:$j:$xmlid[$j]:$program[$j]\n";
     }
-  }
-}
+  } #end of $qam[$j]  
+}#end of for loop     
 
 # Kill any remaining strays.  Of course, if we didn't create MPGs, then
 # there won't be any to kill.
-if ($create_mpg) { `killall hdhomerun_config`; }
+if ($create_mpg || $use_streaminfo) { `killall hdhomerun_config`; }
 
 close (MYFILE);
 
