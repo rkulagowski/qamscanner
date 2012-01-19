@@ -92,7 +92,7 @@ if ($help) {
     || ($start_channel > $end_channel) || ($end_channel > 9999)) {
 
     print 
-    "Invalid channel combination. Start channel must be 1 or greater\n" .
+    "Invalid channel combination. Start channel must be greater than 1\n" .
     "and less than end channel.  End channel must be greater than start\n" .
     "channel and less than 9999.\n";
     exit;
