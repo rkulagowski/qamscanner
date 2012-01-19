@@ -24,6 +24,8 @@ No arguments will run a scan from channel 2 through 300.
 
 --debug      Enable debug mode.  Prints additional information
              to assist with any issues.
+--authtype   Default is "unspecified". If the scan returns no
+             valid channels, re-run the program with "unknown".
 --create-mpg If you have an ATSC HDHR on your network, it will
              be used to create sample .mpg files to verify channel
              information. Default is false.
@@ -32,3 +34,11 @@ No arguments will run a scan from channel 2 through 300.
 --start      Start channel.  Default is channel 2.
 --end        End channel.  Default is channel 300.
 --help       This screen.
+
+Bug reports to qam-info@schedulesdirect.org  Include the .conf
+file and the complete output when the script is run with
+--debug
+
+Example:
+
+$ ./qamscanner.pl --authtype unknown --end 1700 --create-mpg --duration 5

@@ -24,8 +24,8 @@ use strict;
 use File::HomeDir;
 use Getopt::Long;
 
-my $version = "1.05";
-my $date="2012-01-07";
+my $version = "1.06";
+my $date="2012-01-18";
 
 my (@deviceid, @deviceip, @device_hwtype, @qam, @program, @hdhr_callsign);
 my (@lineupinformation, @SD_callsign, @xmlid);
@@ -41,6 +41,12 @@ my $password;
 my $timeoffset;
 my $help;
 
+# auth=unspecified seems to mean that it's clear, but other users have
+# stated that they needed to use "unknown" to get any channels. 
+# "subscribed" is no good because it's a channel accessible via the Prime,
+# but not necessarily clear QAM.
+my $authtype = "unspecified";
+
 # Set $debugenabled to 0 to reduce output.
 my $debugenabled=0;
 
@@ -52,7 +58,8 @@ my $create_mpg=0;
 # How long should we capture data for?
 my $mpg_duration_seconds=10;
 
-GetOptions ('debug' => \$debugenabled, 
+GetOptions ('debug' => \$debugenabled,
+            'authtype=s' => \$authtype,
             'create-mpg' => \$create_mpg,
             'duration=i' => \$mpg_duration_seconds,
             'start=i' => \$start_channel,
@@ -65,6 +72,8 @@ if ($help) {
         "\nNo arguments will run a scan from channel 2 through 300.\n" .
         "\n--debug      Enable debug mode.  Prints additional information " .
         "\n             to assist with any issues." .
+        "\n--authtype   Default is \"unspecified\". If the scan returns no" .
+        "\n             valid channels, re-run the program with \"unknown\"." .
         "\n--create-mpg If you have an ATSC HDHR on your network, it will " .
         "\n             be used to create sample .mpg files to verify channel " .
         "\n             information. Default is false." .
@@ -91,12 +100,12 @@ if ($help) {
 
 print "\nScanning through tv_grab_na_dd.conf file for lineup id and channel map.\n";
 
-# If you have more than 2000 channels, this isn't the program for you!  We
+# If you have more than 3000 channels, this isn't the program for you!  We
 # want the arrays to have a known value in each element.  If the user has
 # de-selected a particular channel, then we'll have *** as the call sign for
 # that channel number, and that's ok, because we'll replace it later with
 # whatever the provider is using as the call sign.
-for my $j (0 .. 2000) { 
+for my $j (0 .. 3000) { 
   $SD_callsign[$j] = "***"; 
   $xmlid[$j] = "0"; 
 }
@@ -216,8 +225,7 @@ for ($i=$start_channel; $i <= $end_channel; $i++) {
 
 if ($debugenabled) {  print "channel is $i vcgvs is:\n$vchannel_get_vstatus\n"; }
 
-      if ($vchannel_get_vstatus =~ /auth=unspecified/) {
-      # auth=unspecified seems to mean that it's clear.
+      if ($vchannel_get_vstatus =~ /auth=$authtype/) {
 
         my $k = (split(/=/,$vchannel_get_vstatus))[2];
         $hdhr_callsign[$i] = substr $k,0,length($k)-5;
