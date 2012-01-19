@@ -24,7 +24,7 @@ use strict;
 use File::HomeDir;
 use Getopt::Long;
 
-my $version = "1.07";
+my $version = "1.08";
 my $date="2012-01-19";
 
 my (@deviceid, @deviceip, @device_hwtype, @qam, @program, @hdhr_callsign);
@@ -182,7 +182,7 @@ if ($debugenabled) {  print "raw data from discover: $line\n"; } #prints the raw
       $hdhrcc_index=$i;  #Keep track of which device is a HDHR-CC
     }  
 
-    if ($device_hwtype[$i] eq "hdhomerun_atsc" && $create_mpg) {
+    if ($device_hwtype[$i] =~ "_atsc" && $create_mpg) {
       print "Is this device connected to an Antenna, or is it connected to your Cable system? (A/C/Skip) ";
       my $response;
       chomp ($response = <STDIN>);
