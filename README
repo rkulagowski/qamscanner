@@ -1,6 +1,6 @@
-This program scans for QAM channels using a HDHomerun-Cable Card device to
-generate a channels.conf formatted file.  It can then be imported into
-various programs.
+This program scans for clear QAM channels using a HDHomerun-Cable Card
+device to generate a channels.conf formatted file.  It can then be imported
+into various programs.
 
 The end result is that users with a cable card can create a file that
 includes the call sign of the station on a particular QAM frequency, making
@@ -19,26 +19,43 @@ For best results, you'll need at least one Cable Card HDHR and one non-CC
 HDHR.  The scanner will abort if it doesn't find a CC HDHR, because that's
 the whole point.
 
-qamscanner.pl accepts the following command line arguments.
-No arguments will run a scan from channel 2 through 300.
+Usage: qamscanner.pl [switches]
 
---debug      Enable debug mode.  Prints additional information
-             to assist with any issues.
---authtype   Default is "unspecified". If the scan returns no
-             valid channels, re-run the program with "unknown".
---create-mpg If you have an ATSC HDHR on your network, it will
-             be used to create sample .mpg files to verify channel
-             information. Default is false.
---duration   If you're creating .mpg files, how long should they
-             be (in seconds). Default is 10 seconds.
---start      Start channel.  Default is channel 2.
---end        End channel.  Default is channel 300.
---help       This screen.
+This script supports the following command line arguments.
+No arguments will run a scan from channel 1 through 1000.
 
-Bug reports to qam-info@schedulesdirect.org  Include the .conf
-file and the complete output when the script is run with
---debug
+--debug                    Enable debug mode. Prints additional information
+                           to assist in troubleshooting any issues.
+
+--start n                  Start channel. Default is channel 1.
+
+--end n                    End channel. Default is channel 1000.
+
+--verify streaminfo | mpg  Some cable providers have pseudo clear QAM channels.
+                           (Primarily "On Demand") The script will try to
+                           verify that the channel is actually available via
+                           clear QAM by using an ATSC HDHomerun to either
+                           read the encryption status directly from the QAM
+                           table via streaminfo or by creating sample mpg
+                           files.  Default is to use streaminfo.
+
+--duration                 If "--verify=mpg" is used, how long a sample
+                           should be captured (in seconds).  Default is 10
+                           seconds.
+
+--authtype                 {unspecified | unknown | subscribed}
+                           Unless explicitly passed, the default is
+                           "unspecified".  If the scan returns no valid
+                           channels, re-run this program with "--authtype
+                           unknown" If you are on FIOS, you may need to use
+                           "--authtype subscribed" which will automatically
+                           enable --verify streaminfo
+
+--help                     This screen.
+
+Bug reports to qam-info@schedulesdirect.org  Include the .conf file and the
+complete output when the script is run with --debug
 
 Example:
 
-$ ./qamscanner.pl --authtype unknown --end 1700 --create-mpg --duration 5
+$ ./qamscanner.pl --authtype unknown --end 1700 --verify=mpg --duration 5

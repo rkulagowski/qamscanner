@@ -24,7 +24,7 @@ use strict;
 use File::HomeDir;
 use Getopt::Long;
 
-my $version = "1.09";
+my $version = "1.10";
 my $date="2012-01-19";
 
 my (@deviceid, @deviceip, @device_hwtype, @qam, @program, @hdhr_callsign);
@@ -46,65 +46,77 @@ my $help;
 # "subscribed" is usually no good because it's a channel accessible via the
 # Prime, but not necessarily clear QAM.  But, at least one user that has
 # FIOS says that they need to use authtype subscribed, then check the
-# streamino information from a non-CC HDHR to confirm that the channel isn't
+# streaminfo information from a non-CC HDHR to confirm that the channel isn't
 # encrypted.  Furrfu!
 my $authtype = "unspecified";
 
-# Attempt to determine encryption status of channels a second way, using the
-# streaminfo information obtained from an ATSC CC.  Required if user
-# specifies "subscribed" as the auth type.  Patch and information from
-# Sebastien Astie.
-my $use_streaminfo=0;
-
-# Set $debugenabled to 0 to reduce output.
-my $debugenabled=0;
+# Attempt to determine encryption status of channels using the streaminfo
+# information obtained from an ATSC CC.  Required if user specifies
+# "subscribed" as the auth type.  Patch and information from Sebastien
+# Astie.
+my $verify_type="streaminfo";
+my $use_streaminfo=1;
 
 # $create_mpg is used to create .mpg files using a non-cable card HDHR
 # so that the user can check that they're not getting garbage.
 # If you don't have a non-cable card HDHR, then set this to 0.
 my $create_mpg=0;
 
-
 # How long should we capture data for?
 my $mpg_duration_seconds=10;
 
+# Set $debugenabled to 0 to reduce output.
+my $debugenabled=0;
+
 GetOptions ('debug' => \$debugenabled,
             'authtype=s' => \$authtype,
-            'streaminfo' => \$use_streaminfo,
-            'create-mpg' => \$create_mpg,
+            'verify=s' => \$verify_type,
             'duration=i' => \$mpg_duration_seconds,
             'start=i' => \$start_channel,
             'end=i' => \$end_channel,
             'help|?' => \$help);
 
 if ($help) {
-  print "\nqamscanner.pl v$version $date\n" .
-        "\nUsage: qamscanner.pl [switches]" .
-        "This script supports the following command line arguments." .
-        "\nNo arguments will run a scan from channel 1 through 1000.\n" .
-        "\n--debug      Enable debug mode. Prints additional information " .
-        "\n             to assist in troubleshooting any issues." .
-        "\n--start      Start channel. Default is channel 1." .
-        "\n--end        End channel. Default is channel 1000." .
-        "\n--create-mpg If you have an ATSC HDHR on your network, it will " .
-        "\n             be used to create sample .mpg files to verify channel " .
-        "\n             information. Default is false." .
-        "\n--duration   If \"--create-mpg\" is used, how long a sample should be " .
-        "\n             captured (in seconds). Default is 10 seconds." .
-        "\n--authtype   {unspecified | unknown | subscribed}" .
-        "\n             Unless explicitly passed, the default is " .
-        "\n             \"unspecified\". If the scan returns no" .
-        "\n             valid channels, re-run this program with \"--authtype unknown\"." .
-        "\n             If you are on FIOS, you may need to use \"--authtype subscribed\"," .
-        "\n             which will automatically enable --streaminfo" .
-        "\n--streaminfo Some cable providers seem to create valid MPG files" .
-        "\n             even if the channel is encrypted. Try reading the" .
-        "\n             encryption status directly from the QAM table of an ATSC HDHR." .
-        "\n             Default is false." .
-        "\n--help       This screen.\n" .
-        "\nBug reports to qam-info\@schedulesdirect.org  Include the .conf " .
-        "\nfile and the complete output when the script is run with " .
-        "\n--debug\n\n";
+  print <<EOF;
+qamscanner.pl v$version $date
+Usage: qamscanner.pl [switches]
+
+This script supports the following command line arguments.
+No arguments will run a scan from channel 1 through 1000.
+
+--debug                    Enable debug mode. Prints additional information
+                           to assist in troubleshooting any issues.
+                           
+--start n                  Start channel. Default is channel 1.
+
+--end n                    End channel. Default is channel 1000.
+
+--verify streaminfo | mpg  Some cable providers have pseudo clear QAM channels.
+                           (Primarily "On Demand") The script will try to
+                           verify that the channel is actually available via
+                           clear QAM by using an ATSC HDHomerun to either
+                           read the encryption status directly from the QAM
+                           table via streaminfo or by creating sample mpg
+                           files.  Default is to use streaminfo.
+                           
+--duration                 If "--verify=mpg" is used, how long a sample
+                           should be captured (in seconds).  Default is 10
+                           seconds.
+                           
+--authtype                 {unspecified | unknown | subscribed}
+                           Unless explicitly passed, the default is
+                           "unspecified".  If the scan returns no valid
+                           channels, re-run this program with "--authtype
+                           unknown" If you are on FIOS, you may need to use
+                           "--authtype subscribed" which will automatically
+                           enable --verify streaminfo
+                           
+--help                     This screen.
+
+Bug reports to qam-info\@schedulesdirect.org  Include the .conf file and the
+complete output when the script is run with --debug
+
+EOF
   exit;
 }
 
@@ -118,8 +130,14 @@ if ($help) {
     exit;
   }
 
+if ($verify_type eq "mpg") {
+  $use_streaminfo = 0;
+  $create_mpg = 1;
+}
+
 if ($authtype eq "subscribed") {
   $use_streaminfo = 1;
+  $create_mpg = 0;
 }
 
 # Find which HDHRs are on the network
@@ -236,7 +254,6 @@ else {
 
 close LINEUP;
 
-
 print "\nScanning channels $start_channel to $end_channel.\n";
 
 for ($i=$start_channel; $i <= $end_channel; $i++) {
@@ -253,7 +270,7 @@ for ($i=$start_channel; $i <= $end_channel; $i++) {
 # Didn't get a tuning error (the channel number exists in the lineup), so
 # keep going.
 
-      sleep (1); #if you don't sleep, you don't get updated values for vstatus
+      sleep (3); #if you don't sleep, you don't get updated values for vstatus
 
       my $vchannel_get_vstatus = `hdhomerun_config $deviceid[$hdhrcc_index] get /tuner0/vstatus`;
       chomp($vchannel_get_vstatus);
@@ -325,9 +342,9 @@ for (my $j = $start_channel; $j <= $end_channel; $j++) {
       if ($tunestatus ne "ERROR: invalid channel") {
         `hdhomerun_config $deviceid[$hdhrqam_index] set /tuner0/program $program[$j]`;
         if ($use_streaminfo) {
-          print " Getting encryption status for channel.";
+          print " Getting encryption status for channel via streaminfo.";
 	  #we need to sleep so that the hdhr can tune itself	
-	  sleep(2);
+	  sleep(3);
 	  my @streaminfo = `hdhomerun_config $deviceid[$hdhrqam_index] get /tuner0/streaminfo`;
 	  my $len = $#streaminfo -1; #the last value in the streaminfo we do not care about (tsid).
           for (my $idx = 0; $idx < $len; $idx++) {
