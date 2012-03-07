@@ -368,7 +368,7 @@ if ($row > 0) # More than one device type was found.
 }
 else
 {
-  $row = $response;
+  $response = 0;
 }
 
 # If the user selects the last entry, then create a fake so that we look
@@ -458,7 +458,7 @@ if ($hdhrqam_index == -1) {
 
 $lineupid =~ s/\W//;
 open MYFILE, ">", "$lineupid.qam.conf";
-print MYFILE "\n# qamscanner.pl v$version $date $lineupid:$device_type[$row][0]".
+print MYFILE "\n# qamscanner.pl v$version $date $lineupid:$device_type[$response][0]".
 " $zipcode start:$start_channel" .
 " end:$end_channel authtype:$authtype streaminfo:$use_streaminfo\n";
 
