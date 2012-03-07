@@ -360,7 +360,6 @@ for my $j (0 .. 3000) {
 # Start at the first line after the "Name" line, end one line before the next "Name" line.
 for my $elem ($device_type[$response][1]+1 .. ($device_type[$response+1][1])-1)
 {
-#  print "$j is $headend_lineup[$j]";
   my $line = $headend_lineup[$elem];
   $line =~ /^channel:(\d+) callsign:(\w+) stationid:(\d+)/;
   $SD_callsign[$1] = $2;
