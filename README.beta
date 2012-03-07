@@ -18,6 +18,14 @@ For best results, you'll need at least one Cable Card HDHR and one non-CC
 HDHR.  The scanner will abort if it doesn't find a CC HDHR, because that's
 the whole point.
 
+When asked about the lineup type, it's strongly suggested that you select
+"Digital" or "Digital Rebuild" because those lineups will usually have more
+channels defined in them.  "Cable" is traditional analog, and for many
+providers there may only be 20 channels in the lineup due to their migration
+to digital.  A Digital lineup will have hundreds of channels and will
+therefore have more call signs defined, making it easier to determine which
+call signs are on which QAM frequencies.
+
 Usage: qamscanner.beta.pl [switches]
 
 This script supports the following command line arguments.
