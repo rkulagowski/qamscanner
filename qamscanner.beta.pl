@@ -22,7 +22,7 @@ use Getopt::Long;
 use WWW::Mechanize;
 
 my $version = "2.00";
-my $date="2012-03-05";
+my $date="2012-03-07";
 
 my (@deviceid, @deviceip, @device_hwtype, @qam, @program, @hdhr_callsign);
 my (@lineupinformation, @SD_callsign, @xmlid);
@@ -33,41 +33,45 @@ my $channel_number=0;
 my $start_channel=1;
 my $end_channel=1000;
 my $lineupid=0;
+my $ccdevice="";
+my $cc_tuner=99; # Set bogus high value.
+my $qamdevice="";
+my $qam_tuner=99;
+my $autodiscover=1;
 my $username;
 my $password;
-my $timeoffset;
 my $help;
 my $zipcode="0";
 
 # Extract the list of known device types
-    my %device_type_hash = ('A' => 'Cable A lineup',
-                            'B' => 'Cable B lineup',
-                            'C' => 'Reserved',
-                            'D' => 'Rebuild analog lineup',
-                            'E' => 'Reserved',
-                            'F' => 'D device cable ready and non-addressable for D',
-                            'G' => 'Non-addressable converters and cable-ready sets',
-                            'H' => 'Hamlin converter',
-                            'I' => 'Jerrold impulse converter',
-                            'J' => 'Jerrold converter',
-                            'K' => 'Reserved',
-                            'L' => 'Rebuild Digital',
-                            'M' => 'Reserved',
-                            'N' => 'Pioneer converter',
-                            'O' => 'Oak converter',
-                            'P' => 'Reserved',
-                            'Q' => 'Reserved',
-                            'R' => 'Cable-ready TV sets (non-rebuild)',
-                            'S' => 'Reserved',
-                            'T' => 'Tocom converter',
-                            'U' => 'Cable-ready TV sets with Cable A',
-                            'V' => 'Cable-ready TV sets with Cable B',
-                            'W' => 'Scientific-Atlanta converter',
-                            'X' => 'Digital (non-rebuild)',
-                            'Y' => 'Reserved',
-                            'Z' => 'Zenith converter',
-                            ''  => 'Cable',
-                           );
+my %device_type_hash = ('A' => 'Cable A lineup',
+                        'B' => 'Cable B lineup',
+                        'C' => 'Reserved',
+                        'D' => 'Cable (Rebuild)',
+                        'E' => 'Reserved',
+                        'F' => 'Cable-ready TV sets (Rebuild)',
+                        'G' => 'Non-addressable converters and cable-ready sets',
+                        'H' => 'Hamlin converter',
+                        'I' => 'Jerrold impulse converter',
+                        'J' => 'Jerrold converter',
+                        'K' => 'Reserved',
+                        'L' => 'Digital (Rebuild)',
+                        'M' => 'Reserved',
+                        'N' => 'Pioneer converter',
+                        'O' => 'Oak converter',
+                        'P' => 'Reserved',
+                        'Q' => 'Reserved',
+                        'R' => 'Cable-ready TV sets (non-rebuild)',
+                        'S' => 'Reserved',
+                        'T' => 'Tocom converter',
+                        'U' => 'Cable-ready TV sets with Cable A',
+                        'V' => 'Cable-ready TV sets with Cable B',
+                        'W' => 'Scientific-Atlanta converter',
+                        'X' => 'Digital',
+                        'Y' => 'Reserved',
+                        'Z' => 'Zenith converter',
+                        ''  => 'Cable',
+                       );
 
 # auth=unspecified seems to mean that it's clear, but other users have
 # stated that they needed to use "unknown" to get any channels. 
@@ -103,7 +107,72 @@ GetOptions ('debug' => \$debugenabled,
             'start=i' => \$start_channel,
             'end=i' => \$end_channel,
             'zipcode=s' => \$zipcode,
+            'ccdevice=s' => \$ccdevice,
+            'cctuner=i' => \$cc_tuner,
+            'qamdevice=s' => \$qamdevice,
+            'qamtuner=i' => \$qam_tuner,
             'help|?' => \$help);
+
+sub discoverHDHR()
+{
+# Find which HDHRs are on the network
+my @output = `hdhomerun_config discover`;
+chomp(@output); # removes newlines
+
+print "\nDiscovering HD Homeruns on the network.\n";
+
+foreach my $line(@output) {
+if ($debugenabled) {  print "raw data from discover: $line\n"; } #prints the raw information
+
+    ($deviceid[$i], $deviceip[$i]) = (split (/ /,$line))[2, 5];
+
+    chomp($device_hwtype[$i] = `hdhomerun_config $deviceid[$i] get /sys/model`);
+
+    print "device ID $deviceid[$i] has IP address $deviceip[$i] and is a $device_hwtype[$i]\n";
+
+    if ($device_hwtype[$i] eq "hdhomerun3_cablecard") {
+      $hdhrcc_index=$i;  #Keep track of which device is a HDHR-CC
+    }  
+
+    if ($device_hwtype[$i] =~ "_atsc" && ($create_mpg || $use_streaminfo)) {
+      print "Is this device connected to an Antenna, or is it connected to your Cable system? (A/C/Skip) ";
+      my $response;
+      chomp ($response = <STDIN>);
+      $response = uc($response);
+      if ($response eq "C") { 
+        $hdhrqam_index=$i;  #Keep track of which device is connected to coax - can't do a QAM scan on Antenna systems.
+      }
+    }  
+
+    $i++;
+}
+
+if ($debugenabled) { 
+  print "hdhrcc_index is $hdhrcc_index\nhdhrqam_index is $hdhrqam_index\n"; 
+}
+
+if ($hdhrcc_index == -1) {
+  print "Fatal error: did not find a HD Homerun with a cable card.\n";
+  exit;
+}
+
+if ($hdhrqam_index == -1 && $authtype eq "subscribed") 
+{
+  print
+  "\nFatal error: Using authtype \"subscribed\" without verifying resulting\n" .
+  "QAM table using a non-Cable Card HDHR is not supported.\n" .
+  "Did not find a non-CC HDHR connected to the coax.\n";
+  exit;
+}
+
+$ccdevice =  $deviceid[$hdhrcc_index];
+$qamdevice = $deviceid[$hdhrqam_index];
+
+} # end of the subroutine.
+
+
+############## Start of main program
+
 
 if ($help) {
   print <<EOF;
@@ -147,6 +216,18 @@ No arguments will run a scan from channel 1 through 1000.
                            prompted.  If you're specifying a Canadian postal
                            code, then use six consecutive characters, no
                            embedded spaces.
+
+The following should only be used once you're familiar with the program.
+--ccdevice                 Specify which cable card device will be used for the 
+                           scan.
+--cctuner                  Specify which tuner will be used on the cable
+                           card HDHR.
+
+--qamdevice                Specify which non-CC device is used to confirm the
+                           results of the scan.                           
+--qamtuner                 Specify which tuner will be used on the non-CC HDHR.                           
+                           Automatically configures that tuner for coax, so
+                           ensure that it's not connected to an antenna.
                            
 --help                     This screen.
 
@@ -177,53 +258,17 @@ if ($authtype eq "subscribed") {
   $create_mpg = 0;
 }
 
-# Find which HDHRs are on the network
-my @output = `hdhomerun_config discover`;
-chomp(@output); # removes newlines
-
-print "\nDiscovering HD Homeruns on the network.\n";
-
-foreach my $line(@output) {
-if ($debugenabled) {  print "raw data from discover: $line\n"; } #prints the raw information
-
-    ($deviceid[$i], $deviceip[$i]) = (split (/ /,$line))[2, 5];
-
-    chomp($device_hwtype[$i] = `hdhomerun_config $deviceid[$i] get /sys/model`);
-
-    print "device ID $deviceid[$i] has IP address $deviceip[$i] and is a $device_hwtype[$i]\n";
-
-    if ($device_hwtype[$i] eq "hdhomerun3_cablecard") {
-      $hdhrcc_index=$i;  #Keep track of which device is a HDHR-CC
-    }  
-
-    if ($device_hwtype[$i] =~ "_atsc" && ($create_mpg || $use_streaminfo)) {
-      print "Is this device connected to an Antenna, or is it connected to your Cable system? (A/C/Skip) ";
-      my $response;
-      chomp ($response = <STDIN>);
-      $response = uc($response);
-      if ($response eq "C") { 
-        $hdhrqam_index=$i;  #Keep track of which device is connected to coax - can't do a QAM scan on Antenna systems.
-      }
-    }  
-
-    $i++;
+if ($ccdevice eq "" and $qamdevice eq "" and $cc_tuner == 99 and $qam_tuner == 99)
+{
+# User didn't specify anything, so we have to run the discover routine.
+  discoverHDHR();
+  $cc_tuner=0;
+  $qam_tuner=0;
 }
-
-if ($debugenabled) { 
-  print "hdhrcc_index is $hdhrcc_index\nhdhrqam_index is $hdhrqam_index\n"; 
-}
-
-if ($hdhrcc_index == -1) {
-  print "Fatal error: did not find a HD Homerun with a cable card.\n";
-  exit;
-}
-
-if ($hdhrqam_index == -1 && $authtype eq "subscribed") {
-  print
-"\nFatal error: Using authtype \"subscribed\" without verifying resulting\n" .
-"QAM table using a non-Cable Card HDHR is not supported.\n" .
-"Did not find a non-CC HDHR connected to the coax.\n";
-exit;
+else
+{
+  if ($cc_tuner == 99) { $cc_tuner = 0; }
+  if ($qam_tuner== 99) { $qam_tuner = 0; }
 }
 
 # Yes, goto sometimes considered evil. But not always.
@@ -264,8 +309,11 @@ open (my $fh, "<","available_headends.txt") or
     next if ($line =~ /^GLOBCST/);
     next if ($line =~ /^SKYANGL/);
     next if ($line =~ /Name:Antenna/);
-    # lineup identifier, name, location, url
-    ($he[$row][0],$he[$row][1],$he[$row][2],$he[$row][3]) = split(/\|/,$line);
+    my @vals = split /\|/, $line;
+    $he[$row]->{'headend'} = shift @vals;
+    $he[$row]->{'name'} = shift @vals;
+    $he[$row]->{'location'} = shift @vals;
+    $he[$row]->{'url'} = shift @vals;
     $row++;
   } #end of the while loop
   $row--;
@@ -275,7 +323,7 @@ open (my $fh, "<","available_headends.txt") or
 
 for my $j (0 .. $row)
 {
-  print "$j. $he[$j][1], $he[$j][2] ($he[$j][0])\n";
+  print "$j. $he[$j]->{'name'}, $he[$j]->{'location'} ($he[$j]->{'headend'})\n";
 }
 print "\nEnter the number of your lineup, 'Q' to exit, 'A' to try again: ";
 
@@ -305,16 +353,16 @@ if ($response < 0 or $response > $row)
 
 print "\nDownloading lineup information.\n";
 
-$lineupid = $he[$response][0];
+$lineupid = $he[$response]->{'headend'};
 
-$m->get($he[$response][3]);
-$m->save_content("$he[$response][0].txt.gz");
+$m->get($he[$response]->{'url'});
+$m->save_content("$lineupid.txt.gz");
 
 print "Unzipping file.\n\n";
-system("gunzip --force $he[$response][0].txt.gz");
+system("gunzip --force $lineupid.txt.gz");
 
-open ($fh, "<", "$he[$response][0].txt") or 
-  die "Fatal error: could not open $he[$response][0].txt: $!\n";
+open ($fh, "<", "$lineupid.txt") or 
+  die "Fatal error: could not open $lineupid.txt: $!\n";
 
   my @headend_lineup = <$fh>;
   chomp(@headend_lineup);
@@ -328,13 +376,13 @@ open ($fh, "<", "$he[$response][0].txt") or
   {
     $line++;  
     next unless $elem =~ /^Name/;
-    $elem =~ /devicetype:(.?)|fulldevicename:(\w)/;
-    $device_type[$row][0] = $1; # The device type
-    $device_type[$row][1] = $line; # store the line number as the second element.
+    $elem =~ /devicetype:(.?)/;
+    $device_type[$row]->{'type'} = $1; # The device type
+    $device_type[$row]->{'linenumber'} = $line; # store the line number as the second element.
 
-    if ($device_type[$row][0] eq "|")
+    if ($device_type[$row]->{'type'} eq "|")
     {
-      $device_type[$row][0]="";
+      $device_type[$row]->{'type'} = "";
     }
     $row++;
   }
@@ -345,7 +393,7 @@ if ($row > 0) # More than one device type was found.
   print "The following lineups are available on this headend:\n";
   for my $j (0 .. $row)
   {
-    print "$j. $device_type_hash{$device_type[$j][0]}\n";
+    print "$j. $device_type_hash{$device_type[$j]->{'type'}}\n";
   }
 
   print "Enter the number of the lineup you are scanning: ";
@@ -375,7 +423,7 @@ else
 # through the end of the file.
 if ($response == $row)
 {
-  $device_type[$row+1][1] = scalar (@headend_lineup);
+  $device_type[$row+1]->{'linenumber'} = scalar (@headend_lineup);
 }
 
 # If you have more than 3000 channels, this isn't the program for you!  We
@@ -389,7 +437,7 @@ for my $j (0 .. 3000) {
 }
 
 # Start at the first line after the "Name" line, end one line before the next "Name" line.
-for my $elem ($device_type[$response][1]+1 .. ($device_type[$response+1][1])-1)
+for my $elem ($device_type[$response]->{'linenumber'}+1 .. ($device_type[$response+1]->{'linenumber'})-1)
 {
   my $line = $headend_lineup[$elem];
   $line =~ /^channel:(\d+) callsign:(\w+) stationid:(\d+)/;
@@ -401,7 +449,7 @@ print "\nScanning channels $start_channel to $end_channel.\n";
 
 for ($i=$start_channel; $i <= $end_channel; $i++) {
     print "Getting QAM data for channel $i\n";
-    my $vchannel_set_status = `hdhomerun_config $deviceid[$hdhrcc_index] set /tuner0/vchannel $i`;
+    my $vchannel_set_status = `hdhomerun_config $ccdevice set /tuner$cc_tuner/vchannel $i`;
     chomp($vchannel_set_status);
 
 # If we get anything back, that indicates an error, so print it out.
@@ -415,7 +463,7 @@ for ($i=$start_channel; $i <= $end_channel; $i++) {
 
       sleep (3); #if you don't sleep, you don't get updated values for vstatus
 
-      my $vchannel_get_vstatus = `hdhomerun_config $deviceid[$hdhrcc_index] get /tuner0/vstatus`;
+      my $vchannel_get_vstatus = `hdhomerun_config $ccdevice get /tuner$cc_tuner/vstatus`;
       chomp($vchannel_get_vstatus);
 
 if ($debugenabled) {  print "channel is $i vcgvs is:\n$vchannel_get_vstatus\n"; }
@@ -438,17 +486,16 @@ if ($debugenabled) {  print "channel is $i vcgvs is:\n$vchannel_get_vstatus\n"; 
 
 if ($debugenabled) {  print "channel name is $hdhr_callsign[$i]\n"; }
 
-        chomp($qam[$i] = `hdhomerun_config $deviceid[$hdhrcc_index] get /tuner0/channel`);
+        chomp($qam[$i] = `hdhomerun_config $ccdevice get /tuner$cc_tuner/channel`);
         $qam[$i]=substr $qam[$i],4;  
-        chomp($program[$i] = `hdhomerun_config $deviceid[$hdhrcc_index] get /tuner0/program`);
+        chomp($program[$i] = `hdhomerun_config $ccdevice get /tuner$cc_tuner/program`);
       } # done getting QAM information for a valid channel
     } # end of vchannel wasn't an error
 } #end of main for loop.  We've scanned from $startchannel to $endchannel
 
 # If we don't have a QAM device, then don't create the .mpg files or check
 # the qam streaminfo for encrypted status.
-
-if ($hdhrqam_index == -1) {
+if ($qamdevice eq "") {
   $create_mpg = 0;
   $use_streaminfo = 0;
 }
@@ -458,12 +505,12 @@ if ($hdhrqam_index == -1) {
 
 $lineupid =~ s/\W//;
 open MYFILE, ">", "$lineupid.qam.conf";
-print MYFILE "\n# qamscanner.pl v$version $date $lineupid:$device_type[$response][0]".
+print MYFILE "\n# qamscanner.pl v$version $date $lineupid:$device_type[$response]->{'type'}".
 " $zipcode start:$start_channel" .
 " end:$end_channel authtype:$authtype streaminfo:$use_streaminfo\n";
 
 if ($create_mpg || $use_streaminfo) {
-  `hdhomerun_config $deviceid[$hdhrqam_index] set /tuner0/channelmap us-cable`;
+  `hdhomerun_config $qamdevice set /tuner$qam_tuner/channelmap us-cable`;
 }
 
 for (my $j = $start_channel; $j <= $end_channel; $j++) {
@@ -480,16 +527,16 @@ for (my $j = $start_channel; $j <= $end_channel; $j++) {
       $SD_callsign[$j] = $hdhr_callsign[$j];
     }
     if ($create_mpg || $use_streaminfo) {
-      my $tunestatus = `hdhomerun_config $deviceid[$hdhrqam_index] set /tuner0/channel auto:$qam[$j]`;
+      my $tunestatus = `hdhomerun_config $qamdevice set /tuner$qam_tuner/channel auto:$qam[$j]`;
       chomp($tunestatus);
       my $channelisclear = 0;
       if ($tunestatus ne "ERROR: invalid channel") {
-        `hdhomerun_config $deviceid[$hdhrqam_index] set /tuner0/program $program[$j]`;
+        `hdhomerun_config $qamdevice set /tuner$qam_tuner/program $program[$j]`;
         if ($use_streaminfo) {
           print " Getting encryption status for channel via streaminfo.";
 	  #we need to sleep so that the hdhr can tune itself	
 	  sleep(3);
-	  my @streaminfo = `hdhomerun_config $deviceid[$hdhrqam_index] get /tuner0/streaminfo`;
+	  my @streaminfo = `hdhomerun_config $qamdevice get /tuner$cc_tuner/streaminfo`;
 	  my $len = $#streaminfo -1; #the last value in the streaminfo we do not care about (tsid).
           for (my $idx = 0; $idx < $len; $idx++) {
             #check if the string starts with the programid
@@ -510,8 +557,8 @@ if ($debugenabled) { print "About to start timeout\n"; }
           eval {
             local $SIG{ALRM} = sub { die "alarm\n" }; # NB: \n required
             alarm $mpg_duration_seconds;
-            system ("hdhomerun_config", "$deviceid[$hdhrqam_index]", "save",
-            "/tuner0", "channel$channel_number.$SD_callsign[$j].mpg");
+            system ("hdhomerun_config", "$qamdevice", "save",
+            "/tuner$qam_tuner", "channel$channel_number.$SD_callsign[$j].mpg");
             alarm 0;
           };
           my $filesizetest = "channel$channel_number.$SD_callsign[$j].mpg";
