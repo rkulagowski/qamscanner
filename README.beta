@@ -7,7 +7,9 @@ includes the call sign of the station on a particular QAM frequency, making
 it easier to share that information with users that don't have a cable card.
 
 Requirements:
-You need to have libwww-mechanize-perl installed in order to run the script:
+You need to have libwww-mechanize-perl available in order to run the script.
+If not already installed, do:
+
 $ sudo apt-get install libwww-mechanize-perl
 
 if you're on Ubuntu.

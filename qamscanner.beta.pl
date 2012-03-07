@@ -39,6 +39,36 @@ my $timeoffset;
 my $help;
 my $zipcode="0";
 
+# Extract the list of known device types
+    my %device_type_hash = ('A' => 'Cable A lineup',
+                            'B' => 'Cable B lineup',
+                            'C' => 'Reserved',
+                            'D' => 'Rebuild analog lineup',
+                            'E' => 'Reserved',
+                            'F' => 'D device cable ready and non-addressable for D',
+                            'G' => 'Non-addressable converters and cable-ready sets',
+                            'H' => 'Hamlin converter',
+                            'I' => 'Jerrold impulse converter',
+                            'J' => 'Jerrold converter',
+                            'K' => 'Reserved',
+                            'L' => 'Rebuild Digital',
+                            'M' => 'Reserved',
+                            'N' => 'Pioneer converter',
+                            'O' => 'Oak converter',
+                            'P' => 'Reserved',
+                            'Q' => 'Reserved',
+                            'R' => 'Cable-ready TV sets (non-rebuild)',
+                            'S' => 'Reserved',
+                            'T' => 'Tocom converter',
+                            'U' => 'Cable-ready TV sets with Cable A',
+                            'V' => 'Cable-ready TV sets with Cable B',
+                            'W' => 'Scientific-Atlanta converter',
+                            'X' => 'Digital (non-rebuild)',
+                            'Y' => 'Reserved',
+                            'Z' => 'Zenith converter',
+                            ''  => 'Cable',
+                           );
+
 # auth=unspecified seems to mean that it's clear, but other users have
 # stated that they needed to use "unknown" to get any channels. 
 # "subscribed" is usually no good because it's a channel accessible via the
@@ -241,12 +271,13 @@ open (my $fh, "<","available_headends.txt") or
   $row--;
   close $fh;
 
-print "\nSelect your lineup, 'Q' to exit, 'A' to try again:\n";
+  print "\n";
 
 for my $j (0 .. $row)
 {
   print "$j. $he[$j][1], $he[$j][2] ($he[$j][0])\n";
 }
+print "\nEnter the number of your lineup, 'Q' to exit, 'A' to try again: ";
 
 my $response;
 chomp ($response = <STDIN>);
@@ -279,7 +310,7 @@ $lineupid = $he[$response][0];
 $m->get($he[$response][3]);
 $m->save_content("$he[$response][0].txt.gz");
 
-print "Unzipping file.\n";
+print "Unzipping file.\n\n";
 system("gunzip --force $he[$response][0].txt.gz");
 
 open ($fh, "<", "$he[$response][0].txt") or 
@@ -297,13 +328,13 @@ open ($fh, "<", "$he[$response][0].txt") or
   {
     $line++;  
     next unless $elem =~ /^Name/;
-    $elem =~ /devicetype:(.?)/;
+    $elem =~ /devicetype:(.?)|fulldevicename:(\w)/;
     $device_type[$row][0] = $1; # The device type
     $device_type[$row][1] = $line; # store the line number as the second element.
 
     if ($device_type[$row][0] eq "|")
     {
-      $device_type[$row][0]="Analog";
+      $device_type[$row][0]="";
     }
     $row++;
   }
@@ -311,13 +342,13 @@ open ($fh, "<", "$he[$response][0].txt") or
 
 if ($row > 0) # More than one device type was found.
 {
-  print "The following device types are available in this lineup:\n";
+  print "The following lineups are available on this headend:\n";
   for my $j (0 .. $row)
   {
-    print "$j. $device_type[$j][0]\n";
+    print "$j. $device_type_hash{$device_type[$j][0]}\n";
   }
 
-  print "Which lineup are you scanning?\n";
+  print "Enter the number of the lineup you are scanning: ";
   chomp ($response = <STDIN>);
   $response = uc($response);
 
