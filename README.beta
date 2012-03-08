@@ -18,9 +18,10 @@ For best results, you'll need at least one Cable Card HDHR and one non-CC
 HDHR.  The scanner will abort if it doesn't find a CC HDHR, because that's
 the whole point.
 
-When asked about the lineup type, it's strongly suggested that you select
-"Digital" or "Digital Rebuild" because those lineups will usually have more
-channels defined in them.  "Cable" is traditional analog, and for many
+When asked about the device type, or when passing it on the command line as
+the --devtype parameter, it's strongly suggested that you select "Digital"
+(aka "X") or "Digital Rebuild" ("L") because those lineups will usually have
+more channels defined in them.  "Cable" is traditional analog, and for many
 providers there may only be 20 channels in the lineup due to their migration
 to digital.  A Digital lineup will have hundreds of channels and will
 therefore have more call signs defined, making it easier to determine which
@@ -66,12 +67,32 @@ No arguments will run a scan from channel 1 through 1000.
                            code, then use six consecutive characters, no
                            embedded spaces.
 
+The following should only be used once you're familiar with the program.
+--ccdevice                 Specify which cable card device will be used for the
+                           scan.
+--cctuner                  Specify which tuner will be used on the cable
+                           card HDHR. Defaults to tuner 0.
+
+--qamdevice                Specify which non-CC device is used to confirm the
+                           results of the scan.
+--qamtuner                 Specify which tuner will be used on the non-CC HDHR.
+                           Automatically configures that tuner for coax, so
+                           ensure that it's not connected to an antenna. 
+                           Defaults to tuner 0.
+
+--lineupid                 Your headend identifier.
+--devtype                  Headend device type. Defaults to "blank", the
+                           traditional analog lineup.
+
 --help                     This screen.
 
 Bug reports to qam-info@schedulesdirect.org  Include the .conf file and the
 complete output when the script is run with --debug
 
-Example:
+Examples:
 
 $ ./qamscanner.beta.pl --authtype unknown --end 1700 --verify=mpg --duration 5 --zipcode=60030
+
 $ ./qamscanner.beta.pl --end 100 --zipcode=j4z1x7
+
+$ ./qamscanner.beta.pl --end 100 --zipcode=60030 --ccdevice=1310B768 --qamdevice=1010001F --lineupid=IL57303 --devtype=X
