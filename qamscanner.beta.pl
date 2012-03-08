@@ -20,6 +20,7 @@
 use strict;
 use Getopt::Long;
 use WWW::Mechanize;
+use POSIX  qw(strftime);
 
 my $version = "2.00";
 my $date    = "2012-03-08";
@@ -557,8 +558,8 @@ if ( $qamdevice eq "" ) {
 # lineupid so that we get rid of anything that's not alphanumeric.
 
 $lineupid =~ s/\W//;
-open MYFILE, ">", "$lineupid.qam.conf";
-print MYFILE
+open ($fh, ">", "$lineupid.qam.conf.".strftime "%Y%m%d", localtime);
+print $fh
 "\n# qamscanner.pl v$version $date $lineupid:$device_type[$response]->{'type'}"
   . " $zipcode start:$start_channel"
   . " end:$end_channel authtype:$authtype streaminfo:$use_streaminfo\n";
@@ -649,7 +650,7 @@ for ( my $j = $start_channel ; $j <= $end_channel ; $j++ ) {
           # correlate data between users if we get an odd provider-assigned call
           # sign and need to figure out the "real" call sign.
                 if ($channelisclear) {
-                    print MYFILE
+                    print $fh
 "$SD_callsign[$j]:$qam[$j]:QAM_256:$j:$xmlid[$j]:$program[$j]\n";
                 }
             }    #end of tunestatus
@@ -657,7 +658,7 @@ for ( my $j = $start_channel ; $j <= $end_channel ; $j++ ) {
         else {
 
 # We're not creating mpgs or using streaminfo, but we should still dump the qamscan.
-            print MYFILE
+            print $fh
               "$SD_callsign[$j]:$qam[$j]:QAM_256:$j:$xmlid[$j]:$program[$j]\n";
         }
     }    #end of $qam[$j]
@@ -667,7 +668,7 @@ for ( my $j = $start_channel ; $j <= $end_channel ; $j++ ) {
 # there won't be any to kill.
 if ( $create_mpg || $use_streaminfo ) { `killall hdhomerun_config`; }
 
-close(MYFILE);
+close($fh);
 
 print "\nDone.\n";
 
