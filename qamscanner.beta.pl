@@ -494,7 +494,7 @@ for my $elem ( $device_type[$response]->{'linenumber'} +
 
 print "\nScanning channels $start_channel to $end_channel.\n";
 
-for ( $i = $start_channel ; $i <= $end_channel ; $i++ ) {
+for $i ($start_channel .. $end_channel) {
     print "Getting QAM data for channel $i\n";
     my $vchannel_set_status =
       `hdhomerun_config $ccdevice set /tuner$cc_tuner/vchannel $i`;
@@ -556,8 +556,8 @@ if ( $qamdevice eq "" ) {
 
 # Dump the information gathered into an external file.  Normalize the
 # lineupid so that we get rid of anything that's not alphanumeric.
-
 $lineupid =~ s/\W//;
+
 open ($fh, ">", "$lineupid.qam.conf.".strftime "%Y%m%d", localtime);
 print $fh
 "\n# qamscanner.pl v$version $date $lineupid:$device_type[$response]->{'type'}"
@@ -568,27 +568,27 @@ if ( $create_mpg || $use_streaminfo ) {
     `hdhomerun_config $qamdevice set /tuner$qam_tuner/channelmap us-cable`;
 }
 
-for ( my $j = $start_channel ; $j <= $end_channel ; $j++ ) {
-    if ( $qam[$j] ) {
-        print "\nChannel $j: ";
-        if ( $SD_callsign[$j] eq "***" ) {
+for $i ($start_channel .. $end_channel ) {
+    if ( $qam[$i] ) {
+        print "\nChannel $i: ";
+        if ( $SD_callsign[$i] eq "***" ) {
             print "Did not get a call sign from Schedules Direct";
-            if ( $hdhr_callsign[$j] ne "***" ) {
+            if ( $hdhr_callsign[$i] ne "***" ) {
                 print ", using provider-assigned call sign.\n";
             }
             else {
                 print
                   " and provider did not supply call sign either, using ***\n";
             }
-            $SD_callsign[$j] = $hdhr_callsign[$j];
+            $SD_callsign[$i] = $hdhr_callsign[$i];
         }
         if ( $create_mpg || $use_streaminfo ) {
             my $tunestatus =
-`hdhomerun_config $qamdevice set /tuner$qam_tuner/channel auto:$qam[$j]`;
+`hdhomerun_config $qamdevice set /tuner$qam_tuner/channel auto:$qam[$i]`;
             chomp($tunestatus);
             my $channelisclear = 0;
             if ( $tunestatus ne "ERROR: invalid channel" ) {
-`hdhomerun_config $qamdevice set /tuner$qam_tuner/program $program[$j]`;
+`hdhomerun_config $qamdevice set /tuner$qam_tuner/program $program[$i]`;
                 if ($use_streaminfo) {
                     print
                       " Getting encryption status for channel via streaminfo.";
@@ -603,7 +603,7 @@ for ( my $j = $start_channel ; $j <= $end_channel ; $j++ ) {
 
                         #check if the string starts with the programid
                         chomp( $streaminfo[$idx] );
-                        if (   ( $streaminfo[$idx] =~ m/^$program[$j]:/ )
+                        if (   ( $streaminfo[$idx] =~ m/^$program[$i]:/ )
                             && ( $streaminfo[$idx] !~ m/(encrypted)/ ) )
                         {
                             $channelisclear = 1;
@@ -613,11 +613,11 @@ for ( my $j = $start_channel ; $j <= $end_channel ; $j++ ) {
                 }    #end of $use_streaminfo
                 elsif ($create_mpg) {
                     print
-"\nCreating $mpg_duration_seconds second file for channel $j callsign $SD_callsign[$j]\n";
+"\nCreating $mpg_duration_seconds second file for channel $i callsign $SD_callsign[$i]\n";
 
              # The files created will always have a 4-digit channel number, with
              # leading 0's so that the files sort correctly.
-                    $channel_number = sprintf "%04d", $j;
+                    $channel_number = sprintf "%04d", $i;
 
  # next routine is from http://arstechnica.com/civis/viewtopic.php?f=20&t=914012
                     if ($debugenabled) { print "About to start timeout\n"; }
@@ -630,12 +630,12 @@ for ( my $j = $start_channel ; $j <= $end_channel ; $j++ ) {
                             "$qamdevice",
                             "save",
                             "/tuner$qam_tuner",
-                            "channel$channel_number.$SD_callsign[$j].mpg"
+                            "channel$channel_number.$SD_callsign[$i].mpg"
                         );
                         alarm 0;
                     };
                     my $filesizetest =
-                      "channel$channel_number.$SD_callsign[$j].mpg";
+                      "channel$channel_number.$SD_callsign[$i].mpg";
 
 # if the filesize is 0-bytes, then don't put it into the qamdump file; for whatever reason
 # the channel isn't tunable.
@@ -651,7 +651,7 @@ for ( my $j = $start_channel ; $j <= $end_channel ; $j++ ) {
           # sign and need to figure out the "real" call sign.
                 if ($channelisclear) {
                     print $fh
-"$SD_callsign[$j]:$qam[$j]:QAM_256:$j:$xmlid[$j]:$program[$j]\n";
+"$SD_callsign[$i]:$qam[$i]:QAM_256:$i:$xmlid[$i]:$program[$i]\n";
                 }
             }    #end of tunestatus
         }    #end of $create_mpg || $use_streaminfo
@@ -659,9 +659,9 @@ for ( my $j = $start_channel ; $j <= $end_channel ; $j++ ) {
 
 # We're not creating mpgs or using streaminfo, but we should still dump the qamscan.
             print $fh
-              "$SD_callsign[$j]:$qam[$j]:QAM_256:$j:$xmlid[$j]:$program[$j]\n";
+              "$SD_callsign[$i]:$qam[$i]:QAM_256:$i:$xmlid[$i]:$program[$i]\n";
         }
-    }    #end of $qam[$j]
+    }    #end of $qam[$i]
 }    #end of for loop
 
 # Kill any remaining strays.  Of course, if we didn't create MPGs, then
