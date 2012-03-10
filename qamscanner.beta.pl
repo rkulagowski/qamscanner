@@ -23,7 +23,7 @@ use WWW::Mechanize;
 use POSIX  qw(strftime);
 
 my $version = "2.00";
-my $date    = "2012-03-08";
+my $date    = "2012-03-10";
 
 my ( @deviceid, @deviceip, @device_hwtype, @qam, @program, @hdhr_callsign );
 my ( @lineupinformation, @SD_callsign, @xmlid );
@@ -366,6 +366,7 @@ if ( $lineupid eq
 
     if ( $response eq "A" ) {
         $zipcode = "0";
+        $lineupid = "";
         goto START;
     }
 
@@ -374,6 +375,7 @@ if ( $lineupid eq
     if ( $response < 0 or $response > $row ) {
         print "Invalid choice.\n";
         $zipcode = "0";
+        $lineupid = "";
         goto START;
     }
 
@@ -442,11 +444,20 @@ if ( $devtype eq "" ) # User didn't pass the device type as a parameter, so ask.
             exit;
         }
 
+        if ($response =~ /\D/)
+        {
+            print "Must use digits.\n";
+            $zipcode = "0";
+            $lineupid = "";
+            goto START;
+        }
+
         $response *= 1;    # Numerify it.
 
         if ( $response < 0 or $response > $row ) {
             print "Invalid choice.\n";
             $zipcode = "0";
+            $lineupid = "";
             goto START;
         }
     }
@@ -596,7 +607,7 @@ for $i ($start_channel .. $end_channel ) {
                     #we need to sleep so that the hdhr can tune itself
                     sleep(3);
                     my @streaminfo =
-`hdhomerun_config $qamdevice get /tuner$cc_tuner/streaminfo`;
+`hdhomerun_config $qamdevice get /tuner$qam_tuner/streaminfo`;
                     my $len = $#streaminfo - 1
                       ; #the last value in the streaminfo we do not care about (tsid).
                     for ( my $idx = 0 ; $idx < $len ; $idx++ ) {
