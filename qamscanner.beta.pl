@@ -677,11 +677,15 @@ for $i ($start_channel .. $end_channel ) {
 
 # Kill any remaining strays.  Of course, if we didn't create MPGs, then
 # there won't be any to kill.
-if ( $create_mpg || $use_streaminfo ) { `killall hdhomerun_config`; }
+if ( $create_mpg || $use_streaminfo ) 
+{ 
+  print "Terminating any stale processes.\n";
+  `killall hdhomerun_config`; 
+}
 
 close($fh);
 
 print "\nDone.\n";
 
 print "Please email the .conf file to qam-info\@schedulesdirect.org\n";
-exit;
+exit(0);
