@@ -23,7 +23,7 @@ use WWW::Mechanize;
 use POSIX  qw(strftime);
 
 my $version = "2.00";
-my $date    = "2012-03-12";
+my $date    = "2012-04-05";
 
 my ( @deviceid, @deviceip, @device_hwtype, @qam, @program, @hdhr_callsign );
 my ( @lineupinformation, @SD_callsign, @xmlid );
