@@ -569,7 +569,7 @@ if ( $qamdevice eq "" ) {
 # lineupid so that we get rid of anything that's not alphanumeric.
 $lineupid =~ s/\W//;
 
-open ($fh, ">", "$lineupid.qam.conf.".strftime "%Y%m%d", localtime);
+open ($fh, ">", strftime "%Y%m%d"."-$lineupid.qam.conf", localtime);
 print $fh
 "\n# qamscanner.pl v$version $date $lineupid:$device_type[$response]->{'type'}"
   . " $zipcode start:$start_channel"
