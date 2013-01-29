@@ -45,7 +45,6 @@ my $channelNumber = 0;
 my $startChannel  = 1;
 my $endChannel    = 1000;
 my $lineupID      = "";
-my $devtype       = "";
 my $ccDevice      = "";
 my $ccTuner       = 99;     # Set bogus high value.
 my $qamDevice     = "";
@@ -106,7 +105,6 @@ GetOptions(
     'lineupID=s'  => \$lineupID,
     'username=s'  => \$username,
     'password=s'  => \$password,
-    'devtype=s'   => \$devtype,
     'beta'        => \$useBetaServer,
     'vlc=s'       => \$vlcIPaddress,
     'help|?'      => \$help
@@ -190,8 +188,6 @@ The following should only be used once you're familiar with the program.
                            Defaults to tuner 0.
 
 --lineupID                 Your headend identifier.
---devtype                  Headend device type. Defaults to "blank", the
-                           traditional analog lineup.
 
 --help                     This screen.
 
