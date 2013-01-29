@@ -1,20 +1,12 @@
 This program scans for clear QAM channels using a HDHomerun-Cable Card
-device to generate a channels.conf formatted file.  It can then be imported
-into various programs.
+device to generate a file containg the names and callsigns of the channels
+which were discovered.
 
 The end result is that users with a cable card can create a file that
 includes the call sign of the station on a particular QAM frequency, making
 it easier to share that information with users that don't have a cable card.
 
 Requirements:
-You'll need to install XMLTV and run tv_grab_na_dd --configure first.  This
-will pull down a channel map for your account from Schedules Direct.
-
-You need to install libfile-homedir-perl in order to run the script:
-$ sudo apt-get install libfile-homedir-perl
-
-if you're on Ubuntu.
-
 For best results, you'll need at least one Cable Card HDHR and one non-CC
 HDHR.  The scanner will abort if it doesn't find a CC HDHR, because that's
 the whole point.
@@ -24,14 +16,20 @@ Usage: qamscanner.pl [switches]
 This script supports the following command line arguments.
 No arguments will run a scan from channel 1 through 1000.
 
+qamscanner.pl v3.00 2013-01-28
+Usage: qamscanner.pl [switches]
+
+This script supports the following command line arguments.
+No arguments will run a scan from channel 1 through 1000.
+
 --debug                    Enable debug mode. Prints additional information
                            to assist in troubleshooting any issues.
 
---start n                  Start channel. Default is channel 1.
+--start=n                  Start channel. Default is channel 1.
 
---end n                    End channel. Default is channel 1000.
+--end=n                    End channel. Default is channel 1000.
 
---verify streaminfo | mpg  Some cable providers have pseudo clear QAM channels.
+--verify= streaminfo | mpg Some cable providers have pseudo clear QAM channels.
                            (Primarily "On Demand") The script will try to
                            verify that the channel is actually available via
                            clear QAM by using an ATSC HDHomerun to either
@@ -43,6 +41,10 @@ No arguments will run a scan from channel 1 through 1000.
                            should be captured (in seconds).  Default is 10
                            seconds.
 
+--vlc= IP.add.re.ss        VLC can be used to confirm unknown channels. Specify
+                           the IP address of the host running VLC. Default is
+                           "127.0.0.1"
+
 --authtype                 {unspecified | unknown | subscribed}
                            Unless explicitly passed, the default is
                            "unspecified".  If the scan returns no valid
@@ -51,9 +53,35 @@ No arguments will run a scan from channel 1 through 1000.
                            "--authtype subscribed" which will automatically
                            enable --verify streaminfo
 
+--zipcode                  When grabbing the channel list from Schedules Direct,
+                           you can supply your 5-digit zip code or
+                           6-character postal code to get a list of cable TV
+                           providers in your area, otherwise you'll be
+                           prompted.  If you're specifying a Canadian postal
+                           code, then use six consecutive characters, no
+                           embedded spaces.
+
+
+The following should only be used once you're familiar with the program.
+--ccdevice                 Specify which cable card device will be used for the
+                           scan.
+--cctuner                  Specify which tuner will be used on the cable
+                           card HDHR. Defaults to tuner 0.
+
+--qamdevice                Specify which non-CC device is used to confirm the
+                           results of the scan.
+--qamtuner                 Specify which tuner will be used on the non-CC HDHR.
+                           Automatically configures that tuner for coax, so
+                           ensure that it's not connected to an antenna.
+                           Defaults to tuner 0.
+
+--lineupID                 Your headend identifier.
+--devtype                  Headend device type. Defaults to "blank", the
+                           traditional analog lineup.
+
 --help                     This screen.
 
-Bug reports to qam-info@schedulesdirect.org  Include the .conf file and the
+Bug reports to qam-info@schedulesdirect.org  Include the .txt file and the
 complete output when the script is run with --debug
 
 Example:
