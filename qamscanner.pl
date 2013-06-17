@@ -32,8 +32,8 @@ use Digest::SHA qw(sha1_hex);
 use Data::Dumper;
 
 my $version  = "3.00";
-my $date     = "2013-01-28";
-my $api      = 20130107;
+my $date     = "2013-06-17";
+my $api      = 20130512;
 my $randhash = "";
 
 my ( @deviceID, @deviceIP, @deviceHWType );
@@ -204,7 +204,9 @@ if (   ( $startChannel < 1 )
     || ( $endChannel > 9999 ) )
 {
 
-    print "Invalid channel combination. Start channel must be greater than 0\n" . "and less than end channel. End channel must be greater than start\n" . "channel and less than 9999.\n";
+    print "Invalid channel combination. Start channel must be greater than 0\n";
+    print "and less than end channel. End channel must be greater than start\n";
+    print "channel and less than 9999.\n";
     exit;
 }
 
@@ -257,7 +259,7 @@ unless ( $zipcode =~ /^\d{5}$/ or $zipcode =~ /^[A-Z0-9]{6}$/ )
     goto START;
 }
 
-$response = &get_headends( "none", $zipcode );
+$response = &get_headends($randhash, $zipcode );
 
 my $row = 0;
 
