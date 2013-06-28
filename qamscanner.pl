@@ -31,7 +31,7 @@ use Digest::SHA qw(sha1_hex);
 
 use Data::Dumper;
 
-my $version  = "3.00";
+my $version  = "3.01";
 my $date     = "2013-06-17";
 my $api      = 20130512;
 my $randhash = "";
@@ -327,7 +327,7 @@ print "\nDownloading lineup information.\n";
 &download_lineup( $randhash, $lineupID );
 
 print "Unzipping file.\n\n";
-system("unzip -o $lineupID.json.zip");
+system("unzip -o $lineupID.headends.json.zip");
 
 open( my $fh, "<", "$lineupID.json.txt" )
   or die "Fatal error: could not open $lineupID.json.txt: $!\n";
@@ -761,6 +761,7 @@ sub send_request()
     my $fields = { 'request' => $request };
 
     $m->submit_form( form_number => 1, fields => $fields, button => 'submit' );
+
     if ( $debugEnabled && $fname eq "" )
 
       # If there's a file name, then the response is going to be a .zip file, and we don't want to try to print a zip.
@@ -808,7 +809,8 @@ sub download_lineup()
     {
         print "download->lineup: created $json_text\n";
     }
-    my $response = JSON->new->utf8->decode( &send_request( $json_text, "$to_get.json.zip" ) );
+
+    my $response = JSON->new->utf8->decode( &send_request( $json_text) );
 
     if ( $response->{"response"} eq "ERROR" )
     {
@@ -817,6 +819,11 @@ sub download_lineup()
         exit;
     }
 
+    my $url      = $response->{"URL"};
+    my $fileName = $response->{"filename"};
+
+    print "url is: $url\n";
+    $m->get( $url, ':content_file' => $fileName );
 }
 
 sub login_to_sd()
