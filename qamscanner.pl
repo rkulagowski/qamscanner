@@ -31,13 +31,13 @@ use Digest::SHA qw(sha1_hex);
 
 use Data::Dumper;
 
-my $version  = "3.01";
-my $date     = "2013-06-17";
-my $api      = 20130512;
+my $version  = "3.02";
+my $date     = "2013-09-16";
 my $randhash = "";
 
 my ( @deviceID, @deviceIP, @deviceHWType );
 my ( @he, @channel );
+my $api           = 0;
 my $i             = 0;
 my $hdhrCCIndex   = -1;
 my $hdhrQAMIndex  = -1;
@@ -114,15 +114,16 @@ GetOptions(
 
 if ($useBetaServer)
 {
-
     # Test server. Things may be broken there.
     $baseurl = "http://23.21.174.111";
     print "Using beta server.\n";
+    $api = 20130709;
 }
 else
 {
     $baseurl = "https://data2.schedulesdirect.org";
     print "Using production server.\n";
+    $api = 20130512;
 }
 
 if ($help)
@@ -320,6 +321,15 @@ else                   # we received a lineupID
         }
     }
 
+}
+
+print "Have you added this lineup to your account yet? (Y/n)\n";
+chomp( $response = <STDIN> );
+$response = uc($response);
+
+if ( $response ne "Y" )
+{
+	&add_or_delete_headend($randhash, $lineupID, "add");	
 }
 
 print "\nDownloading lineup information.\n";
@@ -651,16 +661,18 @@ sub discoverHDHR()
 
         chomp( $deviceHWType[$i] = `hdhomerun_config $deviceID[$i] get /sys/model` );
 
-        print "device ID $deviceID[$i] has IP address $deviceIP[$i] and is a $deviceHWType[$i]\n";
+        print "device ID $deviceID[$i] has IP address $deviceIP[$i] and is a $deviceHWType[$i]";
 
         if ( $deviceHWType[$i] eq "hdhomerun3_cablecard" )
         {
             $hdhrCCIndex = $i;    #Keep track of which device is a HDHR-CC
+            print "; skipping this device.\n";
         }
 
         if ( $deviceHWType[$i] =~ "_atsc"
             && ( $verifyType ne "none" ) )
         {
+            print "\n";
             print "Is this device connected to an Antenna, or is it connected to your Cable system? (A/C/Skip) ";
             my $response;
             chomp( $response = <STDIN> );
@@ -870,5 +882,56 @@ sub saveMpgFile()
         system( "hdhomerun_config", "$qamDevice", "save", "/tuner$qamTuner", "$name" );
         alarm 0;
     };
+
+}
+
+sub add_or_delete_headend()
+{
+
+    # Order of parameters:randhash,headend,action
+
+    my %req;
+
+    if ( $_[2] eq "add" )
+    {
+        print "Sending addHeadend request to server.\n";
+        $req{1}->{"action"} = "add";
+    }
+
+    if ( $_[2] eq "delete" )
+    {
+        print "Sending deleteHeadend request to server.\n";
+        $req{1}->{"action"} = "delete";
+    }
+
+    $req{1}->{"object"}   = "headends";
+    $req{1}->{"randhash"} = $_[0];
+    $req{1}->{"request"}  = $_[1];
+
+    $req{1}->{"api"} = $api;
+
+    my $json1     = new JSON::XS;
+    my $json_text = $json1->utf8(1)->encode( $req{1} );
+    if ($debugEnabled)
+    {
+        print "add/delete->headend: created $json_text\n";
+    }
+    my $response = JSON->new->utf8->decode( &send_request($json_text) );
+
+    if ( $response->{"response"} eq "ERROR" )
+    {
+        print "Received error from server:\n";
+        print $response->{"message"}, "\nExiting.\n";
+        exit;
+    }
+
+    print "Successfully sent Headend request.\n";
+
+    if ($debugEnabled)
+    {
+        print Dumper($response);
+    }
+
+    return;
 
 }
