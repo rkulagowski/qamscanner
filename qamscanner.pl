@@ -31,7 +31,7 @@ use Digest::SHA qw(sha1_hex);
 
 use Data::Dumper;
 
-my $version  = "3.03";
+my $version  = "3.04";
 my $date     = "2013-09-16";
 my $randhash = "";
 
@@ -328,7 +328,7 @@ print "NOTE: This is not the same as your existing SchedulesDirect XML service a
 chomp( $response = <STDIN> );
 $response = uc($response);
 
-if ( $response eq "Y" )
+if ( $response ne "N" )
 {
 	&add_or_delete_headend($randhash, $lineupID, "add");	
 }
