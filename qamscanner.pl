@@ -31,7 +31,7 @@ use Digest::SHA qw(sha1_hex);
 
 use Data::Dumper;
 
-my $version  = "3.02";
+my $version  = "3.03";
 my $date     = "2013-09-16";
 my $randhash = "";
 
@@ -323,11 +323,12 @@ else                   # we received a lineupID
 
 }
 
-print "Have you added this lineup to your account yet? (Y/n)\n";
+print "Do you need to add this lineup to your JSON-service beta account? (Y/n)\n";
+print "NOTE: This is not the same as your existing SchedulesDirect XML service account.\n";
 chomp( $response = <STDIN> );
 $response = uc($response);
 
-if ( $response ne "Y" )
+if ( $response eq "Y" )
 {
 	&add_or_delete_headend($randhash, $lineupID, "add");	
 }
