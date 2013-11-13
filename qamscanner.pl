@@ -31,8 +31,8 @@ use Digest::SHA qw(sha1_hex);
 
 use Data::Dumper;
 
-my $version  = "3.04";
-my $date     = "2013-09-16";
+my $version  = "3.05";
+my $date     = "2013-11-13";
 my $randhash = "";
 
 my ( @deviceID, @deviceIP, @deviceHWType );
@@ -51,12 +51,13 @@ my $qamDevice     = "";
 my $qamTuner      = 99;
 my $username      = "";
 my $password      = "";
+my $country       = "";
 my $vlcIPaddress  = "127.0.0.1";
 my $help;
-my $zipcode = "0";
+my $zipcode = "";
 my $response;
 my $m = WWW::Mechanize->new( agent => "qamscanner v$version/$date" );
-my $useBetaServer = 0;
+my $useBetaServer = 1;
 my $baseurl;
 my %ch;
 
@@ -105,6 +106,7 @@ GetOptions(
     'lineupID=s'  => \$lineupID,
     'username=s'  => \$username,
     'password=s'  => \$password,
+    'country=s'   => \$country,
     'beta'        => \$useBetaServer,
     'vlc=s'       => \$vlcIPaddress,
     'help|?'      => \$help
@@ -115,15 +117,15 @@ GetOptions(
 if ($useBetaServer)
 {
     # Test server. Things may be broken there.
-    $baseurl = "http://23.21.174.111";
+    $baseurl = "https://23.21.174.111";
     print "Using beta server.\n";
-    $api = 20130709;
+    $api = 20131021;
 }
 else
 {
     $baseurl = "https://data2.schedulesdirect.org";
     print "Using production server.\n";
-    $api = 20130512;
+    $api = 20130709;
 }
 
 if ($help)
@@ -166,14 +168,19 @@ No arguments will run a scan from channel 1 through 1000.
                            "--authtype subscribed" which will automatically
                            enable --verify streaminfo
 
---zipcode                  When grabbing the channel list from Schedules Direct,
-                           you can supply your 5-digit zip code or
-                           6-character postal code to get a list of cable TV
+--username                 Login credentials.
+--password                 Login credentials. NOTE: These will be visible in "ps".
+
+--country                  To obtain the headends for a particular country, specify
+                           the ISO3166 two-character country code. If not specified,
+                           the script assumes "US".
+--zipcode                  When obtaining the channel list from Schedules
+                           Direct you can supply your 5-digit zip code or
+                           4-character postal code to get a list of cable TV
                            providers in your area, otherwise you'll be
                            prompted.  If you're specifying a Canadian postal
-                           code, then use six consecutive characters, no
+                           code, then use four consecutive characters, no
                            embedded spaces.
-
 
 The following should only be used once you're familiar with the program.
 --ccdevice                 Specify which cable card device will be used for the
@@ -240,27 +247,32 @@ if ( $password eq "" )
     chomp( $password = <STDIN> );
 }
 
+START:
+if ($country eq "")
+{
+    print "Please enter your two-character ISO3166 country code. (Default is US)\n";
+    print "> ";
+    chomp ($country = <STDIN>);
+    if ($country eq "")
+    {
+        $country = "US";
+    }
+    $country = uc($country);
+}
+
+if ($zipcode eq "")
+{
+    print "Please enter your zip code / postal code to ";
+    print "download headends for your area.\n";
+    print "5 digits for U.S., 4 characters for Canada.\n";
+    chomp( $zipcode = <STDIN> );
+    $zipcode = uc($zipcode);
+}
+
 print "Retrieving randhash from Schedules Direct.\n";
 $randhash = &login_to_sd( $username, $password );
 
-# Yes, goto sometimes considered evil. But not always.
-START:
-if ( $zipcode eq "0" )
-{
-    print "\nPlease enter your zip code / postal code to download lineups:\n";
-    chomp( $zipcode = <STDIN> );
-}
-
-$zipcode = uc($zipcode);
-
-unless ( $zipcode =~ /^\d{5}$/ or $zipcode =~ /^[A-Z0-9]{6}$/ )
-{
-    print "Invalid zip code specified. Must be 5 digits for U.S., 6 characters for Canada.\n";
-    $zipcode = "0";
-    goto START;
-}
-
-$response = &get_headends($randhash, $zipcode );
+$response = &get_headends( $randhash, $zipcode, $country );
 
 my $row = 0;
 
@@ -325,6 +337,7 @@ else                   # we received a lineupID
 
 print "Do you need to add this lineup to your JSON-service beta account? (Y/n)\n";
 print "NOTE: This is not the same as your existing SchedulesDirect XML service account.\n";
+print "If this is the first time you are running this program, say \"Y\".\n";
 chomp( $response = <STDIN> );
 $response = uc($response);
 
@@ -522,9 +535,16 @@ foreach $i ( sort { $a <=> $b } keys %ch )
         foreach my $e (@streamInfo)
         {
             if ($debugEnabled) { print "e is $e\n"; }
-            next if $e =~ /(encrypted|control|internet|tsid)/;
-            $channelisclear = 1;
-            last;
+		$e =~ /^(\d+): (.*)/;
+	        my $thisprogram = $1;
+                my $thisinfo = $2;
+                if ($thisprogram == $ch{$i}->{program})
+                {
+                    $channelisclear = 1 unless $thisinfo =~
+			/(encrypted|control|internet|tsid)/;
+                if ($debugEnabled) { print "$thisinfo -> clear = $channelisclear\n"; }
+                last;
+            }
         }
     }
 
@@ -710,6 +730,57 @@ sub discoverHDHR()
 }    # end of the subroutine.
 
 sub get_headends()
+{
+    # This function returns the headends which are available in a particular
+    # geographic location.
+
+    $randhash = $_[0];
+    my %to_get;
+
+    if ( $_[1] ne "" )
+    {
+    %to_get = (
+        "postalcode" => "PC:" . $_[1],
+        "country" => $_[2]);
+    }
+    else
+    {
+    %to_get = (
+        "postalcode" => "Subscribed",
+        "country" => "ZZ");
+    }
+
+    print "Retrieving headends.\n";
+
+    my %req;
+
+    $req{1}->{"action"}   = "get";
+    $req{1}->{"object"}   = "headends";
+    $req{1}->{"request"}  = \%to_get;
+    $req{1}->{"api"}      = $api;
+    $req{1}->{"randhash"} = $randhash;
+
+    my $json1     = new JSON::XS;
+    my $json_text = $json1->utf8(1)->encode( $req{1} );
+    if ($debugEnabled)
+    {
+        print "get->headends: created $json_text\n";
+    }
+    my $response = JSON->new->utf8->decode( &send_request($json_text) );
+
+    if ( $response->{"code"} != 0 )
+    {
+        print "Received error from server:\n";
+        print $response->{"message"}, "\nExiting.\n";
+        exit;
+    }
+
+    return ($response);
+
+}
+
+
+sub old_get_headends()
 {
 
     # This function returns the headends which are available in a particular
