@@ -117,7 +117,7 @@ GetOptions(
 if ($useBetaServer)
 {
     # Test server. Things may be broken there.
-    $baseurl = "https://23.21.174.111";
+    $baseurl = "http://23.21.174.111";
     print "Using beta server.\n";
     $api = 20131021;
 }
